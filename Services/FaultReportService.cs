@@ -12,17 +12,20 @@ public class FaultReportService : IFaultReportService
     private readonly IMapper _mapper;
     private readonly INotificationService _notificationService;
     private readonly IDeviceService _deviceService;
+    private readonly IKnowledgeBaseService _knowledgeBaseService;
 
     public FaultReportService(
         AppDbContext context,
         IMapper mapper,
         INotificationService notificationService,
-        IDeviceService deviceService)
+        IDeviceService deviceService,
+        IKnowledgeBaseService knowledgeBaseService)
     {
         _context = context;
         _mapper = mapper;
         _notificationService = notificationService;
         _deviceService = deviceService;
+        _knowledgeBaseService = knowledgeBaseService;
     }
 
     public async Task<PagedResult<FaultReportDto>> GetPagedAsync(FaultReportQueryDto query)
@@ -100,7 +103,14 @@ public class FaultReportService : IFaultReportService
             .Include(f => f.Reporter)
             .Include(f => f.AssignedTechnician)
             .FirstOrDefaultAsync(f => f.Id == id);
-        return report == null ? null : _mapper.Map<FaultReportDto>(report);
+        if (report == null) return null;
+
+        var dto = _mapper.Map<FaultReportDto>(report);
+
+        var recommendedArticles = await _knowledgeBaseService.GetRecommendedArticlesByDeviceIdAsync(report.DeviceId, 5);
+        dto.RecommendedArticles = recommendedArticles;
+
+        return dto;
     }
 
     public async Task<FaultReportDto> CreateAsync(CreateFaultReportDto dto, int reporterId)

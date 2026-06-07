@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<MaintenanceContract> MaintenanceContracts { get; set; }
     public DbSet<DeviceBorrowRecord> DeviceBorrowRecords { get; set; }
+    public DbSet<KnowledgeBaseArticle> KnowledgeBaseArticles { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -310,5 +311,31 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<DeviceBorrowRecord>()
             .HasIndex(r => r.BorrowTime);
+
+        modelBuilder.Entity<KnowledgeBaseArticle>()
+            .HasIndex(a => a.ArticleCode)
+            .IsUnique();
+
+        modelBuilder.Entity<KnowledgeBaseArticle>()
+            .Property(a => a.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<KnowledgeBaseArticle>()
+            .HasOne(a => a.Device)
+            .WithMany()
+            .HasForeignKey(a => a.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<KnowledgeBaseArticle>()
+            .HasOne(a => a.Author)
+            .WithMany()
+            .HasForeignKey(a => a.AuthorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<KnowledgeBaseArticle>()
+            .HasIndex(a => new { a.DeviceId, a.Status });
+
+        modelBuilder.Entity<KnowledgeBaseArticle>()
+            .HasIndex(a => a.Status);
     }
 }

@@ -161,3 +161,15 @@ public interface IDeviceBorrowService
     Task<DeviceBorrowStatisticsDto> GetStatisticsAsync();
     Task<List<DeviceBorrowRecordDto>> GetDeviceBorrowRecordsAsync(int deviceId);
 }
+
+public interface IKnowledgeBaseService
+{
+    Task<PagedResult<KnowledgeBaseArticleBriefDto>> GetPagedAsync(KnowledgeBaseArticleQueryDto query);
+    Task<KnowledgeBaseArticleDto?> GetByIdAsync(int id);
+    Task<KnowledgeBaseArticleDto> CreateAsync(CreateKnowledgeBaseArticleDto dto, int authorId);
+    Task<KnowledgeBaseArticleDto?> UpdateAsync(int id, UpdateKnowledgeBaseArticleDto dto);
+    Task<bool> DeleteAsync(int id);
+    Task<KnowledgeBaseStatisticsDto> GetStatisticsAsync();
+    Task<KnowledgeBaseArticleDto?> IncrementViewCountAsync(int id);
+    Task<List<KnowledgeBaseArticleBriefDto>> GetRecommendedArticlesByDeviceIdAsync(int deviceId, int limit = 5);
+}

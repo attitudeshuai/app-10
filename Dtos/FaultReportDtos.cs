@@ -25,6 +25,7 @@ public class FaultReportDto
     public string? Solution { get; set; }
     public string? Remark { get; set; }
     public DateTime CreatedAt { get; set; }
+    public List<KnowledgeBaseArticleBriefDto>? RecommendedArticles { get; set; }
 }
 
 public class CreateFaultReportDto
