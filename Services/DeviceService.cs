@@ -141,7 +141,7 @@ public class DeviceService : IDeviceService
         device.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        if (dto.Status.HasValue && oldStatus != dto.Status.Value)
+        if (dto.Status.HasValue && oldStatus != dto.Status.Value && dto.Status.Value == DeviceStatus.Fault)
         {
             var adminUserIds = await _context.Users
                 .Where(u => u.Role == UserRole.Admin && u.IsActive)
@@ -150,14 +150,13 @@ public class DeviceService : IDeviceService
 
             if (adminUserIds.Count > 0)
             {
-                var priority = dto.Status.Value == DeviceStatus.Fault ? NotificationPriority.High : NotificationPriority.Medium;
                 _ = _notificationService.BatchEnqueueAsync(new BatchCreateNotificationDto
                 {
                     UserIds = adminUserIds,
-                    Title = $"设备状态变更: {device.DeviceCode}",
-                    Content = $"设备 {device.Name}（{device.DeviceCode}）状态已从 {oldStatus} 变更为 {dto.Status.Value}，请关注。",
+                    Title = $"设备故障告警: {device.DeviceCode}",
+                    Content = $"设备 {device.Name}（{device.DeviceCode}）状态已变为故障，请及时安排维修。",
                     Type = NotificationType.DeviceStatusChanged,
-                    Priority = priority,
+                    Priority = NotificationPriority.High,
                     RelatedEntityType = RelatedEntityType.Device,
                     RelatedEntityId = device.Id
                 });

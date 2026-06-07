@@ -3,6 +3,7 @@ using DeviceMaintenanceSystem.Data;
 using DeviceMaintenanceSystem.Dtos;
 using DeviceMaintenanceSystem.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DeviceMaintenanceSystem.Services;
 
@@ -11,12 +12,18 @@ public class NotificationService : INotificationService
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
     private readonly INotificationQueue _queue;
+    private readonly ILogger<NotificationService> _logger;
 
-    public NotificationService(AppDbContext context, IMapper mapper, INotificationQueue queue)
+    public NotificationService(
+        AppDbContext context,
+        IMapper mapper,
+        INotificationQueue queue,
+        ILogger<NotificationService> logger)
     {
         _context = context;
         _mapper = mapper;
         _queue = queue;
+        _logger = logger;
     }
 
     public async Task<PagedResult<NotificationDto>> GetPagedAsync(int userId, NotificationQueryDto query)
@@ -115,6 +122,18 @@ public class NotificationService : INotificationService
         _context.Notifications.Add(notification);
         await _context.SaveChangesAsync();
 
+        try
+        {
+            if (!_queue.Enqueue(notification))
+            {
+                _logger.LogWarning("通知入队失败（队列已满），通知ID: {NotificationId}, 用户ID: {UserId}", notification.Id, notification.UserId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "通知入队异常，通知ID: {NotificationId}, 用户ID: {UserId}", notification.Id, notification.UserId);
+        }
+
         return _mapper.Map<NotificationDto>(notification);
     }
 
@@ -147,48 +166,118 @@ public class NotificationService : INotificationService
 
         _context.Notifications.AddRange(notifications);
         await _context.SaveChangesAsync();
+
+        try
+        {
+            var successCount = _queue.EnqueueRange(notifications);
+            if (successCount < notifications.Count)
+            {
+                _logger.LogWarning("批量通知入队部分失败（队列可能已满），成功: {SuccessCount}, 总计: {TotalCount}", successCount, notifications.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "批量通知入队异常，数量: {Count}", notifications.Count);
+        }
     }
 
-    public Task EnqueueAsync(CreateNotificationDto dto)
+    public async Task EnqueueAsync(CreateNotificationDto dto)
     {
-        var notification = new Notification
+        try
         {
-            UserId = dto.UserId,
-            Title = dto.Title,
-            Content = dto.Content,
-            Type = dto.Type,
-            Priority = dto.Priority,
-            RelatedEntityType = dto.RelatedEntityType,
-            RelatedEntityId = dto.RelatedEntityId,
-            CreatedAt = DateTime.UtcNow,
-            IsRead = false
-        };
+            var user = await _context.Users.FindAsync(dto.UserId);
+            if (user == null || !user.IsActive)
+            {
+                _logger.LogWarning("通知目标用户不存在或已禁用，用户ID: {UserId}", dto.UserId);
+                return;
+            }
 
-        _queue.Enqueue(notification);
-        return Task.CompletedTask;
+            var notification = new Notification
+            {
+                UserId = dto.UserId,
+                Title = dto.Title,
+                Content = dto.Content,
+                Type = dto.Type,
+                Priority = dto.Priority,
+                RelatedEntityType = dto.RelatedEntityType,
+                RelatedEntityId = dto.RelatedEntityId,
+                CreatedAt = DateTime.UtcNow,
+                IsRead = false
+            };
+
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                if (!_queue.Enqueue(notification))
+                {
+                    _logger.LogWarning("通知写入队列失败（队列已满，已落库兜底），通知ID: {NotificationId}", notification.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "通知写入队列异常（已落库兜底），通知ID: {NotificationId}", notification.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "创建通知异常，用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
+        }
     }
 
-    public Task BatchEnqueueAsync(BatchCreateNotificationDto dto)
+    public async Task BatchEnqueueAsync(BatchCreateNotificationDto dto)
     {
-        if (dto.UserIds == null || dto.UserIds.Count == 0)
-            return Task.CompletedTask;
-
-        var now = DateTime.UtcNow;
-        var notifications = dto.UserIds.Select(userId => new Notification
+        try
         {
-            UserId = userId,
-            Title = dto.Title,
-            Content = dto.Content,
-            Type = dto.Type,
-            Priority = dto.Priority,
-            RelatedEntityType = dto.RelatedEntityType,
-            RelatedEntityId = dto.RelatedEntityId,
-            CreatedAt = now,
-            IsRead = false
-        }).ToList();
+            if (dto.UserIds == null || dto.UserIds.Count == 0)
+                return;
 
-        _queue.EnqueueRange(notifications);
-        return Task.CompletedTask;
+            var validUserIds = await _context.Users
+                .Where(u => dto.UserIds.Contains(u.Id) && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            if (validUserIds.Count == 0)
+            {
+                _logger.LogWarning("批量通知没有有效目标用户");
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var notifications = validUserIds.Select(userId => new Notification
+            {
+                UserId = userId,
+                Title = dto.Title,
+                Content = dto.Content,
+                Type = dto.Type,
+                Priority = dto.Priority,
+                RelatedEntityType = dto.RelatedEntityType,
+                RelatedEntityId = dto.RelatedEntityId,
+                CreatedAt = now,
+                IsRead = false
+            }).ToList();
+
+            _context.Notifications.AddRange(notifications);
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                var successCount = _queue.EnqueueRange(notifications);
+                if (successCount < notifications.Count)
+                {
+                    _logger.LogWarning("批量通知写入队列部分失败（队列可能已满，已落库兜底），成功: {SuccessCount}, 总计: {TotalCount}", successCount, notifications.Count);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "批量通知写入队列异常（已落库兜底），数量: {Count}", notifications.Count);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "批量创建通知异常，数量: {Count}, 标题: {Title}", dto.UserIds?.Count ?? 0, dto.Title);
+        }
     }
 
     public async Task<NotificationDto?> MarkAsReadAsync(int id, int userId)
@@ -210,20 +299,14 @@ public class NotificationService : INotificationService
 
     public async Task MarkAllAsReadAsync(int userId)
     {
-        var unreadNotifications = await _context.Notifications
-            .Where(n => n.UserId == userId && !n.IsRead)
-            .ToListAsync();
-
-        if (unreadNotifications.Count == 0) return;
-
         var now = DateTime.UtcNow;
-        foreach (var notification in unreadNotifications)
-        {
-            notification.IsRead = true;
-            notification.ReadAt = now;
-        }
+        var count = await _context.Notifications
+            .Where(n => n.UserId == userId && !n.IsRead)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(n => n.IsRead, true)
+                .SetProperty(n => n.ReadAt, now));
 
-        await _context.SaveChangesAsync();
+        _logger.LogInformation("批量标记已读，用户ID: {UserId}, 数量: {Count}", userId, count);
     }
 
     public async Task<bool> DeleteAsync(int id, int userId)
@@ -240,14 +323,11 @@ public class NotificationService : INotificationService
 
     public async Task<int> DeleteReadAsync(int userId)
     {
-        var readNotifications = await _context.Notifications
+        var count = await _context.Notifications
             .Where(n => n.UserId == userId && n.IsRead)
-            .ToListAsync();
+            .ExecuteDeleteAsync();
 
-        if (readNotifications.Count == 0) return 0;
-
-        _context.Notifications.RemoveRange(readNotifications);
-        await _context.SaveChangesAsync();
-        return readNotifications.Count;
+        _logger.LogInformation("清理已读通知，用户ID: {UserId}, 数量: {Count}", userId, count);
+        return count;
     }
 }

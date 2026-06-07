@@ -19,19 +19,24 @@ public class NotificationQueue : INotificationQueue
         _queue = Channel.CreateBounded<Notification>(options);
     }
 
-    public void Enqueue(Notification notification)
+    public bool Enqueue(Notification notification)
     {
         if (notification == null) throw new ArgumentNullException(nameof(notification));
-        _queue.Writer.TryWrite(notification);
+        return _queue.Writer.TryWrite(notification);
     }
 
-    public void EnqueueRange(IEnumerable<Notification> notifications)
+    public int EnqueueRange(IEnumerable<Notification> notifications)
     {
         if (notifications == null) throw new ArgumentNullException(nameof(notifications));
+        var successCount = 0;
         foreach (var notification in notifications)
         {
-            _queue.Writer.TryWrite(notification);
+            if (_queue.Writer.TryWrite(notification))
+            {
+                successCount++;
+            }
         }
+        return successCount;
     }
 
     public async Task<List<Notification>> DequeueBatchAsync(int batchSize, CancellationToken stoppingToken)

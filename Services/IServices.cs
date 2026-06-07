@@ -121,8 +121,8 @@ public interface INotificationService
 
 public interface INotificationQueue
 {
-    void Enqueue(Notification notification);
-    void EnqueueRange(IEnumerable<Notification> notifications);
+    bool Enqueue(Notification notification);
+    int EnqueueRange(IEnumerable<Notification> notifications);
     Task<List<Notification>> DequeueBatchAsync(int batchSize, CancellationToken stoppingToken);
     int GetQueueCount();
 }
