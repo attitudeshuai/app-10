@@ -112,10 +112,14 @@ public class DeviceService : IDeviceService
 
         if (dto.SupplierId.HasValue)
         {
-            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value);
-            if (!supplierExists)
+            var supplier = await _context.Suppliers.FindAsync(dto.SupplierId.Value);
+            if (supplier == null)
             {
                 throw new InvalidOperationException("供应商不存在");
+            }
+            if (supplier.Status != CooperationStatus.Active)
+            {
+                throw new InvalidOperationException("该供应商当前非合作状态，无法关联新设备");
             }
         }
 
@@ -157,10 +161,14 @@ public class DeviceService : IDeviceService
 
         if (dto.SupplierId.HasValue)
         {
-            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value);
-            if (!supplierExists)
+            var supplier = await _context.Suppliers.FindAsync(dto.SupplierId.Value);
+            if (supplier == null)
             {
                 throw new InvalidOperationException("供应商不存在");
+            }
+            if (supplier.Status != CooperationStatus.Active)
+            {
+                throw new InvalidOperationException("该供应商当前非合作状态，无法关联设备");
             }
             device.SupplierId = dto.SupplierId.Value;
         }

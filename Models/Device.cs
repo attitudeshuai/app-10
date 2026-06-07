@@ -21,7 +21,7 @@ public class Device
     public decimal? PurchasePrice { get; set; }
     public string Location { get; set; } = string.Empty;
     public DeviceStatus Status { get; set; } = DeviceStatus.Running;
-    public string Description { get; set; }
+    public string? Description { get; set; }
     public int? SupplierId { get; set; }
     public Supplier? Supplier { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

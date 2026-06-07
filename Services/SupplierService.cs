@@ -53,19 +53,13 @@ public class SupplierService : ISupplierService
         var items = await queryable
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
+            .Select(s => new { Supplier = s, DeviceCount = s.Devices.Count })
             .ToListAsync();
 
-        var supplierIds = items.Select(s => s.Id).ToList();
-        var deviceCounts = await _context.Devices
-            .Where(d => d.SupplierId.HasValue && supplierIds.Contains(d.SupplierId.Value))
-            .GroupBy(d => d.SupplierId)
-            .Select(g => new { SupplierId = g.Key.Value, Count = g.Count() })
-            .ToDictionaryAsync(x => x.SupplierId, x => x.Count);
-
-        var dtos = items.Select(s =>
+        var dtos = items.Select(x =>
         {
-            var dto = _mapper.Map<SupplierDto>(s);
-            dto.DeviceCount = deviceCounts.ContainsKey(s.Id) ? deviceCounts[s.Id] : 0;
+            var dto = _mapper.Map<SupplierDto>(x.Supplier);
+            dto.DeviceCount = x.DeviceCount;
             return dto;
         }).ToList();
 
@@ -81,21 +75,15 @@ public class SupplierService : ISupplierService
 
     public async Task<List<SupplierDto>> GetAllAsync()
     {
-        var suppliers = await _context.Suppliers
+        var items = await _context.Suppliers
             .OrderBy(s => s.Name)
+            .Select(s => new { Supplier = s, DeviceCount = s.Devices.Count })
             .ToListAsync();
 
-        var supplierIds = suppliers.Select(s => s.Id).ToList();
-        var deviceCounts = await _context.Devices
-            .Where(d => d.SupplierId.HasValue && supplierIds.Contains(d.SupplierId.Value))
-            .GroupBy(d => d.SupplierId)
-            .Select(g => new { SupplierId = g.Key.Value, Count = g.Count() })
-            .ToDictionaryAsync(x => x.SupplierId, x => x.Count);
-
-        var dtos = suppliers.Select(s =>
+        var dtos = items.Select(x =>
         {
-            var dto = _mapper.Map<SupplierDto>(s);
-            dto.DeviceCount = deviceCounts.ContainsKey(s.Id) ? deviceCounts[s.Id] : 0;
+            var dto = _mapper.Map<SupplierDto>(x.Supplier);
+            dto.DeviceCount = x.DeviceCount;
             return dto;
         }).ToList();
 
