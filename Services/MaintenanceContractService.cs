@@ -120,6 +120,21 @@ public class MaintenanceContractService : IMaintenanceContractService
 
     public async Task<MaintenanceContractDto> CreateAsync(CreateMaintenanceContractDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.ContractCode))
+        {
+            throw new InvalidOperationException("合同编号不能为空");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.ContractName))
+        {
+            throw new InvalidOperationException("合同名称不能为空");
+        }
+
+        if (dto.Amount < 0)
+        {
+            throw new InvalidOperationException("合同金额不能为负数");
+        }
+
         if (await _context.MaintenanceContracts.AnyAsync(c => c.ContractCode == dto.ContractCode))
         {
             throw new InvalidOperationException("合同编号已存在");
@@ -166,23 +181,35 @@ public class MaintenanceContractService : IMaintenanceContractService
         if (!string.IsNullOrWhiteSpace(dto.ContractName))
             contract.ContractName = dto.ContractName;
 
-        if (dto.StartDate.HasValue)
-            contract.StartDate = dto.StartDate.Value;
-
-        if (dto.EndDate.HasValue)
+        if (dto.Amount.HasValue)
         {
-            var startDate = dto.StartDate ?? contract.StartDate;
-            if (dto.EndDate.Value <= startDate)
+            if (dto.Amount.Value < 0)
+            {
+                throw new InvalidOperationException("合同金额不能为负数");
+            }
+            contract.Amount = dto.Amount.Value;
+        }
+
+        if (dto.StartDate.HasValue || dto.EndDate.HasValue)
+        {
+            var newStartDate = dto.StartDate ?? contract.StartDate;
+            var newEndDate = dto.EndDate ?? contract.EndDate;
+
+            if (newEndDate <= newStartDate)
             {
                 throw new InvalidOperationException("结束日期必须晚于开始日期");
             }
-            contract.EndDate = dto.EndDate.Value;
-            contract.ReminderSent = false;
-            contract.ReminderSentAt = null;
-        }
 
-        if (dto.Amount.HasValue)
-            contract.Amount = dto.Amount.Value;
+            if (dto.StartDate.HasValue)
+                contract.StartDate = dto.StartDate.Value;
+
+            if (dto.EndDate.HasValue)
+            {
+                contract.EndDate = dto.EndDate.Value;
+                contract.ReminderSent = false;
+                contract.ReminderSentAt = null;
+            }
+        }
 
         if (dto.ServiceDescription != null)
             contract.ServiceDescription = dto.ServiceDescription;
