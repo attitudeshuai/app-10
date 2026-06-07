@@ -11,11 +11,13 @@ public class NotificationDto
     public string Content { get; set; } = string.Empty;
     public NotificationType Type { get; set; }
     public NotificationPriority Priority { get; set; }
+    public NotificationStatus Status { get; set; }
     public bool IsRead { get; set; }
     public DateTime? ReadAt { get; set; }
     public RelatedEntityType? RelatedEntityType { get; set; }
     public int? RelatedEntityId { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? ProcessedAt { get; set; }
 }
 
 public class NotificationQueryDto : PagedQuery

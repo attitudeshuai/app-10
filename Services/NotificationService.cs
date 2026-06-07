@@ -118,6 +118,8 @@ public class NotificationService : INotificationService
 
         var notification = _mapper.Map<Notification>(dto);
         notification.CreatedAt = DateTime.UtcNow;
+        notification.Status = NotificationStatus.Processed;
+        notification.ProcessedAt = DateTime.UtcNow;
 
         _context.Notifications.Add(notification);
         await _context.SaveChangesAsync();
@@ -161,6 +163,8 @@ public class NotificationService : INotificationService
             RelatedEntityType = dto.RelatedEntityType,
             RelatedEntityId = dto.RelatedEntityId,
             CreatedAt = now,
+            Status = NotificationStatus.Processed,
+            ProcessedAt = now,
             IsRead = false
         }).ToList();
 

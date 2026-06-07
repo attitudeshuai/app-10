@@ -31,6 +31,13 @@ public enum RelatedEntityType
     System = 5
 }
 
+public enum NotificationStatus
+{
+    Pending = 0,
+    Processed = 1,
+    Failed = 2
+}
+
 public class Notification
 {
     public int Id { get; set; }
@@ -40,9 +47,12 @@ public class Notification
     public string Content { get; set; } = string.Empty;
     public NotificationType Type { get; set; }
     public NotificationPriority Priority { get; set; } = NotificationPriority.Medium;
+    public NotificationStatus Status { get; set; } = NotificationStatus.Pending;
+    public int RetryCount { get; set; } = 0;
     public bool IsRead { get; set; } = false;
     public DateTime? ReadAt { get; set; }
     public RelatedEntityType? RelatedEntityType { get; set; }
     public int? RelatedEntityId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? ProcessedAt { get; set; }
 }

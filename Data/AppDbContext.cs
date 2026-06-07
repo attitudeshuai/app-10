@@ -212,11 +212,18 @@ public class AppDbContext : DbContext
             .HasIndex(n => new { n.UserId, n.CreatedAt });
 
         modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.Status, n.CreatedAt });
+
+        modelBuilder.Entity<Notification>()
             .Property(n => n.Type)
             .HasConversion<string>();
 
         modelBuilder.Entity<Notification>()
             .Property(n => n.Priority)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Notification>()
+            .Property(n => n.Status)
             .HasConversion<string>();
 
         modelBuilder.Entity<Notification>()
