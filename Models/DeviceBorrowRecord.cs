@@ -22,6 +22,13 @@ public class DeviceBorrowRecord
     public User? ReturnOperator { get; set; }
     public DeviceStatus StatusBeforeBorrow { get; set; }
     public bool IsReturned { get; set; } = false;
+    public BorrowApprovalStatus ApprovalStatus { get; set; } = BorrowApprovalStatus.Pending;
+    public int? ApproverId { get; set; }
+    public User? Approver { get; set; }
+    public DateTime? ApprovalTime { get; set; }
+    public string? ApprovalRemark { get; set; }
+    public int? ApplicantId { get; set; }
+    public User? Applicant { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

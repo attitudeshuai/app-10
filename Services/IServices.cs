@@ -177,6 +177,8 @@ public interface IDeviceBorrowService
     Task<bool> DeleteAsync(int id);
     Task<DeviceBorrowStatisticsDto> GetStatisticsAsync();
     Task<List<DeviceBorrowRecordDto>> GetDeviceBorrowRecordsAsync(int deviceId);
+    Task<DeviceBorrowRecordDto?> ApproveAsync(int id, ApproveBorrowDto dto, int approverId);
+    Task<DeviceBorrowRecordDto?> RejectAsync(int id, RejectBorrowDto dto, int approverId);
 }
 
 public interface IKnowledgeBaseService

@@ -320,6 +320,10 @@ public class AppDbContext : DbContext
             .HasConversion<string>();
 
         modelBuilder.Entity<DeviceBorrowRecord>()
+            .Property(r => r.ApprovalStatus)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
             .HasOne(r => r.Device)
             .WithMany(d => d.BorrowRecords)
             .HasForeignKey(r => r.DeviceId)
@@ -338,10 +342,25 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasOne(r => r.Approver)
+            .WithMany()
+            .HasForeignKey(r => r.ApproverId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasOne(r => r.Applicant)
+            .WithMany()
+            .HasForeignKey(r => r.ApplicantId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
             .HasIndex(r => new { r.DeviceId, r.IsReturned });
 
         modelBuilder.Entity<DeviceBorrowRecord>()
             .HasIndex(r => r.BorrowTime);
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasIndex(r => r.ApprovalStatus);
 
         modelBuilder.Entity<KnowledgeBaseArticle>()
             .HasIndex(a => a.ArticleCode)

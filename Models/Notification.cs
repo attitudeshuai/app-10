@@ -13,7 +13,10 @@ public enum NotificationType
     SystemNotice = 8,
     ContractExpiringSoon = 9,
     ContractExpired = 10,
-    InspectionTaskOverdue = 11
+    InspectionTaskOverdue = 11,
+    BorrowRequestSubmitted = 12,
+    BorrowRequestApproved = 13,
+    BorrowRequestRejected = 14
 }
 
 public enum NotificationPriority
@@ -32,7 +35,8 @@ public enum RelatedEntityType
     InspectionTask = 3,
     InspectionPlan = 4,
     System = 5,
-    MaintenanceContract = 6
+    MaintenanceContract = 6,
+    DeviceBorrowRecord = 7
 }
 
 public enum NotificationStatus

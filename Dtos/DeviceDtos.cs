@@ -121,6 +121,13 @@ public class DeviceBorrowRecordDto
     public string? ReturnOperatorName { get; set; }
     public DeviceStatus StatusBeforeBorrow { get; set; }
     public bool IsReturned { get; set; }
+    public BorrowApprovalStatus ApprovalStatus { get; set; }
+    public int? ApproverId { get; set; }
+    public string? ApproverName { get; set; }
+    public DateTime? ApprovalTime { get; set; }
+    public string? ApprovalRemark { get; set; }
+    public int? ApplicantId { get; set; }
+    public string? ApplicantName { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -142,11 +149,23 @@ public class ReturnDeviceBorrowDto
     public string? ReturnRemark { get; set; }
 }
 
+public class ApproveBorrowDto
+{
+    public string? ApprovalRemark { get; set; }
+}
+
+public class RejectBorrowDto
+{
+    public string ApprovalRemark { get; set; } = string.Empty;
+}
+
 public class DeviceBorrowQueryDto : PagedQuery
 {
     public int? DeviceId { get; set; }
     public BorrowType? BorrowType { get; set; }
     public bool? IsReturned { get; set; }
+    public BorrowApprovalStatus? ApprovalStatus { get; set; }
+    public int? ApplicantId { get; set; }
     public string? BorrowerName { get; set; }
     public DateTime? BorrowTimeFrom { get; set; }
     public DateTime? BorrowTimeTo { get; set; }
@@ -160,4 +179,5 @@ public class DeviceBorrowStatisticsDto
     public int ExternalBorrowCount { get; set; }
     public int InternalBorrowCount { get; set; }
     public int OverdueCount { get; set; }
+    public int PendingApprovalCount { get; set; }
 }

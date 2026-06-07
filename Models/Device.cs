@@ -16,6 +16,13 @@ public enum BorrowType
     Internal = 1
 }
 
+public enum BorrowApprovalStatus
+{
+    Pending = 0,
+    Approved = 1,
+    Rejected = 2
+}
+
 public class Device
 {
     public int Id { get; set; }

@@ -92,6 +92,10 @@ public class DeviceService : IDeviceService
                 .ThenInclude(r => r.Operator)
             .Include(d => d.BorrowRecords)
                 .ThenInclude(r => r.ReturnOperator)
+            .Include(d => d.BorrowRecords)
+                .ThenInclude(r => r.Approver)
+            .Include(d => d.BorrowRecords)
+                .ThenInclude(r => r.Applicant)
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (device == null) return null;
@@ -113,8 +117,8 @@ public class DeviceService : IDeviceService
             .Select(r => _mapper.Map<DeviceBorrowRecordDto>(r))
             .ToList();
         detail.CurrentBorrowRecord = borrowRecords
-            .FirstOrDefault(r => !r.IsReturned) != null
-            ? _mapper.Map<DeviceBorrowRecordDto>(borrowRecords.First(r => !r.IsReturned))
+            .FirstOrDefault(r => !r.IsReturned && r.ApprovalStatus == BorrowApprovalStatus.Approved) != null
+            ? _mapper.Map<DeviceBorrowRecordDto>(borrowRecords.First(r => !r.IsReturned && r.ApprovalStatus == BorrowApprovalStatus.Approved))
             : null;
 
         return detail;

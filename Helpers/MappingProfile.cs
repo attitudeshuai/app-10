@@ -111,7 +111,9 @@ public class MappingProfile : Profile
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
             .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
             .ForMember(d => d.OperatorName, opt => opt.MapFrom(s => s.Operator != null ? s.Operator.RealName : null))
-            .ForMember(d => d.ReturnOperatorName, opt => opt.MapFrom(s => s.ReturnOperator != null ? s.ReturnOperator.RealName : null));
+            .ForMember(d => d.ReturnOperatorName, opt => opt.MapFrom(s => s.ReturnOperator != null ? s.ReturnOperator.RealName : null))
+            .ForMember(d => d.ApproverName, opt => opt.MapFrom(s => s.Approver != null ? s.Approver.RealName : null))
+            .ForMember(d => d.ApplicantName, opt => opt.MapFrom(s => s.Applicant != null ? s.Applicant.RealName : null));
         CreateMap<CreateDeviceBorrowDto, DeviceBorrowRecord>();
 
         CreateMap<KnowledgeBaseArticle, KnowledgeBaseArticleDto>()

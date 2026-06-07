@@ -42,7 +42,6 @@ public class DeviceBorrowsController : ControllerBase
     }
 
     [HttpPost]
-    [Authorize(Roles = nameof(UserRole.Admin))]
     public async Task<ActionResult<DeviceBorrowRecordDto>> Borrow([FromBody] CreateDeviceBorrowDto dto)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -55,6 +54,50 @@ public class DeviceBorrowsController : ControllerBase
         {
             var record = await _deviceBorrowService.BorrowAsync(dto, userId);
             return CreatedAtAction(nameof(GetById), new { id = record.Id }, record);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/approve")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<DeviceBorrowRecordDto>> Approve(int id, [FromBody] ApproveBorrowDto dto)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var record = await _deviceBorrowService.ApproveAsync(id, dto, userId);
+            if (record == null) return NotFound();
+            return Ok(record);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/reject")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<DeviceBorrowRecordDto>> Reject(int id, [FromBody] RejectBorrowDto dto)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var record = await _deviceBorrowService.RejectAsync(id, dto, userId);
+            if (record == null) return NotFound();
+            return Ok(record);
         }
         catch (InvalidOperationException ex)
         {
