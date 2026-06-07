@@ -1,5 +1,6 @@
 using DeviceMaintenanceSystem.Dtos;
 using DeviceMaintenanceSystem.Models;
+using Microsoft.AspNetCore.Http;
 
 namespace DeviceMaintenanceSystem.Services;
 
@@ -66,4 +67,27 @@ public interface ISparePartService
     Task<bool> DeleteAsync(int id);
     Task<SparePartStatisticsDto> GetStatisticsAsync();
     Task<PagedResult<SparePartConsumptionDto>> GetConsumptionsAsync(SparePartConsumptionQueryDto query);
+}
+
+public interface IInspectionPlanService
+{
+    Task<PagedResult<InspectionPlanDto>> GetPagedAsync(InspectionPlanQueryDto query);
+    Task<InspectionPlanDto?> GetByIdAsync(int id);
+    Task<InspectionPlanDto> CreateAsync(CreateInspectionPlanDto dto);
+    Task<InspectionPlanDto?> UpdateAsync(int id, UpdateInspectionPlanDto dto);
+    Task<bool> DeleteAsync(int id);
+    Task<InspectionPlanDto?> StartAsync(int id);
+    Task<InspectionPlanDto?> CompleteAsync(int id);
+    Task<InspectionPlanDto?> CancelAsync(int id);
+}
+
+public interface IInspectionRecordService
+{
+    Task<PagedResult<InspectionRecordDto>> GetPagedAsync(InspectionRecordQueryDto query);
+    Task<InspectionRecordDto?> GetByIdAsync(int id);
+    Task<InspectionRecordDto> CreateAsync(CreateInspectionRecordDto dto, int inspectorId);
+    Task<bool> DeleteAsync(int id);
+    Task<List<InspectionRecordDto>> GetDeviceInspectionHistoryAsync(int deviceId);
+    Task<InspectionPhotoDto> UploadPhotoAsync(int recordId, IFormFile file, string? description);
+    Task<InspectionStatisticsDto> GetStatisticsAsync();
 }

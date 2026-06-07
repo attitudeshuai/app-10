@@ -84,6 +84,8 @@ builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IMaintenancePlanService, MaintenancePlanService>();
 builder.Services.AddScoped<IFaultReportService, FaultReportService>();
 builder.Services.AddScoped<ISparePartService, SparePartService>();
+builder.Services.AddScoped<IInspectionPlanService, InspectionPlanService>();
+builder.Services.AddScoped<IInspectionRecordService, InspectionRecordService>();
 
 builder.Services.AddCors(options =>
 {
@@ -96,6 +98,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+app.UseStaticFiles();
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>

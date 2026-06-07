@@ -13,6 +13,9 @@ public class AppDbContext : DbContext
     public DbSet<FaultReport> FaultReports { get; set; }
     public DbSet<SparePart> SpareParts { get; set; }
     public DbSet<SparePartConsumption> SparePartConsumptions { get; set; }
+    public DbSet<InspectionPlan> InspectionPlans { get; set; }
+    public DbSet<InspectionRecord> InspectionRecords { get; set; }
+    public DbSet<InspectionPhoto> InspectionPhotos { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -106,6 +109,66 @@ public class AppDbContext : DbContext
             .HasOne(c => c.FaultReport)
             .WithMany(f => f.SparePartConsumptions)
             .HasForeignKey(c => c.FaultReportId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<InspectionPlan>()
+            .HasIndex(p => p.PlanCode)
+            .IsUnique();
+
+        modelBuilder.Entity<InspectionPlan>()
+            .Property(p => p.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<InspectionPlan>()
+            .Property(p => p.Cycle)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<InspectionPlan>()
+            .HasOne(p => p.Device)
+            .WithMany(d => d.InspectionPlans)
+            .HasForeignKey(p => p.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<InspectionPlan>()
+            .HasOne(p => p.AssignedTechnician)
+            .WithMany()
+            .HasForeignKey(p => p.AssignedTechnicianId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<InspectionRecord>()
+            .HasIndex(r => r.RecordCode)
+            .IsUnique();
+
+        modelBuilder.Entity<InspectionRecord>()
+            .Property(r => r.DeviceStatus)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<InspectionRecord>()
+            .Property(r => r.Result)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<InspectionRecord>()
+            .HasOne(r => r.InspectionPlan)
+            .WithMany(p => p.InspectionRecords)
+            .HasForeignKey(r => r.InspectionPlanId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<InspectionRecord>()
+            .HasOne(r => r.Device)
+            .WithMany(d => d.InspectionRecords)
+            .HasForeignKey(r => r.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<InspectionRecord>()
+            .HasOne(r => r.Inspector)
+            .WithMany()
+            .HasForeignKey(r => r.InspectorId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<InspectionPhoto>()
+            .HasOne(p => p.InspectionRecord)
+            .WithMany(r => r.Photos)
+            .HasForeignKey(p => p.InspectionRecordId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

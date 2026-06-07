@@ -36,5 +36,21 @@ public class MappingProfile : Profile
             .ForMember(d => d.SparePartName, opt => opt.MapFrom(s => s.SparePart != null ? s.SparePart.Name : null))
             .ForMember(d => d.SparePartSpecification, opt => opt.MapFrom(s => s.SparePart != null ? s.SparePart.Specification : null))
             .ForMember(d => d.FaultReportCode, opt => opt.MapFrom(s => s.FaultReport != null ? s.FaultReport.ReportCode : null));
+
+        CreateMap<InspectionPlan, InspectionPlanDto>()
+            .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
+            .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
+            .ForMember(d => d.AssignedTechnicianName, opt => opt.MapFrom(s => s.AssignedTechnician != null ? s.AssignedTechnician.RealName : null));
+        CreateMap<CreateInspectionPlanDto, InspectionPlan>();
+
+        CreateMap<InspectionRecord, InspectionRecordDto>()
+            .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
+            .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
+            .ForMember(d => d.InspectorName, opt => opt.MapFrom(s => s.Inspector != null ? s.Inspector.RealName : null))
+            .ForMember(d => d.InspectionPlanCode, opt => opt.MapFrom(s => s.InspectionPlan != null ? s.InspectionPlan.PlanCode : null))
+            .ForMember(d => d.Photos, opt => opt.MapFrom(s => s.Photos));
+        CreateMap<CreateInspectionRecordDto, InspectionRecord>();
+
+        CreateMap<InspectionPhoto, InspectionPhotoDto>();
     }
 }
