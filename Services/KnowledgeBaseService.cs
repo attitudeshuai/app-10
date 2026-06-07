@@ -22,6 +22,8 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         var queryable = _context.KnowledgeBaseArticles
             .Include(a => a.Device)
             .Include(a => a.Author)
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.SearchKeyword))
@@ -48,6 +50,14 @@ public class KnowledgeBaseService : IKnowledgeBaseService
 
         if (query.Status.HasValue)
             queryable = queryable.Where(a => a.Status == query.Status.Value);
+
+        if (query.TagIds != null && query.TagIds.Count > 0)
+        {
+            foreach (var tagId in query.TagIds)
+            {
+                queryable = queryable.Where(a => a.ArticleTags.Any(at => at.TagId == tagId));
+            }
+        }
 
         var totalCount = await queryable.CountAsync();
 
@@ -82,6 +92,8 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         var article = await _context.KnowledgeBaseArticles
             .Include(a => a.Device)
             .Include(a => a.Author)
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
             .FirstOrDefaultAsync(a => a.Id == id);
         return article == null ? null : _mapper.Map<KnowledgeBaseArticleDto>(article);
     }
@@ -116,6 +128,24 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         article.CreatedAt = DateTime.UtcNow;
         article.UpdatedAt = DateTime.UtcNow;
 
+        if (dto.TagIds != null && dto.TagIds.Count > 0)
+        {
+            var tags = await _context.Tags
+                .Where(t => dto.TagIds.Contains(t.Id))
+                .ToListAsync();
+
+            if (tags.Count != dto.TagIds.Count)
+            {
+                throw new KeyNotFoundException("部分标签不存在");
+            }
+
+            article.ArticleTags = tags.Select(t => new KnowledgeBaseArticleTag
+            {
+                TagId = t.Id,
+                Article = article
+            }).ToList();
+        }
+
         _context.KnowledgeBaseArticles.Add(article);
         await _context.SaveChangesAsync();
 
@@ -124,7 +154,9 @@ public class KnowledgeBaseService : IKnowledgeBaseService
 
     public async Task<KnowledgeBaseArticleDto?> UpdateAsync(int id, UpdateKnowledgeBaseArticleDto dto)
     {
-        var article = await _context.KnowledgeBaseArticles.FindAsync(id);
+        var article = await _context.KnowledgeBaseArticles
+            .Include(a => a.ArticleTags)
+            .FirstOrDefaultAsync(a => a.Id == id);
         if (article == null) return null;
 
         if (dto.Title != null)
@@ -159,6 +191,44 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         if (dto.Status.HasValue)
             article.Status = dto.Status.Value;
 
+        if (dto.TagIds != null)
+        {
+            var existingTagIds = article.ArticleTags.Select(at => at.TagId).ToList();
+            var newTagIds = dto.TagIds.Distinct().ToList();
+
+            var tagsToRemove = existingTagIds.Except(newTagIds).ToList();
+            var tagsToAdd = newTagIds.Except(existingTagIds).ToList();
+
+            if (tagsToRemove.Count > 0)
+            {
+                var tagsToRemoveEntities = article.ArticleTags
+                    .Where(at => tagsToRemove.Contains(at.TagId))
+                    .ToList();
+                _context.KnowledgeBaseArticleTags.RemoveRange(tagsToRemoveEntities);
+            }
+
+            if (tagsToAdd.Count > 0)
+            {
+                var validTags = await _context.Tags
+                    .Where(t => tagsToAdd.Contains(t.Id))
+                    .ToListAsync();
+
+                if (validTags.Count != tagsToAdd.Count)
+                {
+                    throw new KeyNotFoundException("部分标签不存在");
+                }
+
+                foreach (var tag in validTags)
+                {
+                    article.ArticleTags.Add(new KnowledgeBaseArticleTag
+                    {
+                        ArticleId = article.Id,
+                        TagId = tag.Id
+                    });
+                }
+            }
+        }
+
         article.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -186,6 +256,8 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         var topViewed = await _context.KnowledgeBaseArticles
             .Include(a => a.Device)
             .Include(a => a.Author)
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
             .Where(a => a.Status == KnowledgeBaseStatus.Published)
             .OrderByDescending(a => a.ViewCount)
             .Take(10)
@@ -241,6 +313,8 @@ public class KnowledgeBaseService : IKnowledgeBaseService
         var articles = await _context.KnowledgeBaseArticles
             .Include(a => a.Device)
             .Include(a => a.Author)
+            .Include(a => a.ArticleTags)
+                .ThenInclude(at => at.Tag)
             .Where(a => a.Status == KnowledgeBaseStatus.Published)
             .Where(a => a.Device != null && a.Device.Category == deviceCategory)
             .OrderByDescending(a => a.DeviceId == deviceId ? 1 : 0)
@@ -250,6 +324,139 @@ public class KnowledgeBaseService : IKnowledgeBaseService
             .ToListAsync();
 
         return _mapper.Map<List<KnowledgeBaseArticleBriefDto>>(articles);
+    }
+
+    public async Task<PagedResult<TagDto>> GetTagsPagedAsync(TagQueryDto query)
+    {
+        var queryable = _context.Tags
+            .Include(t => t.ArticleTags)
+            .AsQueryable();
+
+        if (query.Type.HasValue)
+            queryable = queryable.Where(t => t.Type == query.Type.Value);
+
+        if (!string.IsNullOrWhiteSpace(query.Keyword))
+        {
+            var keyword = query.Keyword.Trim().ToLower();
+            queryable = queryable.Where(t => t.Name.ToLower().Contains(keyword));
+        }
+
+        var totalCount = await queryable.CountAsync();
+
+        queryable = queryable
+            .OrderBy(t => t.SortOrder)
+            .ThenBy(t => t.Name);
+
+        var items = await queryable
+            .Skip((query.Page - 1) * query.PageSize)
+            .Take(query.PageSize)
+            .ToListAsync();
+
+        var dtos = _mapper.Map<List<TagDto>>(items);
+        return new PagedResult<TagDto>
+        {
+            Items = dtos,
+            TotalCount = totalCount,
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
+        };
+    }
+
+    public async Task<List<TagDto>> GetAllTagsAsync(TagType? type = null)
+    {
+        var queryable = _context.Tags
+            .Include(t => t.ArticleTags)
+            .AsQueryable();
+
+        if (type.HasValue)
+            queryable = queryable.Where(t => t.Type == type.Value);
+
+        var tags = await queryable
+            .OrderBy(t => t.SortOrder)
+            .ThenBy(t => t.Name)
+            .ToListAsync();
+
+        return _mapper.Map<List<TagDto>>(tags);
+    }
+
+    public async Task<TagDto?> GetTagByIdAsync(int id)
+    {
+        var tag = await _context.Tags
+            .Include(t => t.ArticleTags)
+            .FirstOrDefaultAsync(t => t.Id == id);
+        return tag == null ? null : _mapper.Map<TagDto>(tag);
+    }
+
+    public async Task<TagDto> CreateTagAsync(CreateTagDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            throw new InvalidOperationException("标签名称不能为空");
+        }
+
+        var existingTag = await _context.Tags
+            .FirstOrDefaultAsync(t => t.Name == dto.Name.Trim());
+        if (existingTag != null)
+        {
+            throw new InvalidOperationException("标签名称已存在");
+        }
+
+        var tag = _mapper.Map<Tag>(dto);
+        tag.Name = tag.Name.Trim();
+        tag.CreatedAt = DateTime.UtcNow;
+
+        _context.Tags.Add(tag);
+        await _context.SaveChangesAsync();
+
+        return _mapper.Map<TagDto>(tag);
+    }
+
+    public async Task<TagDto?> UpdateTagAsync(int id, UpdateTagDto dto)
+    {
+        var tag = await _context.Tags.FindAsync(id);
+        if (tag == null) return null;
+
+        if (dto.Name != null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+            {
+                throw new InvalidOperationException("标签名称不能为空");
+            }
+
+            var trimmedName = dto.Name.Trim();
+            var existingTag = await _context.Tags
+                .FirstOrDefaultAsync(t => t.Name == trimmedName && t.Id != id);
+            if (existingTag != null)
+            {
+                throw new InvalidOperationException("标签名称已存在");
+            }
+
+            tag.Name = trimmedName;
+        }
+
+        if (dto.Type.HasValue)
+            tag.Type = dto.Type.Value;
+
+        if (dto.Color != null)
+            tag.Color = dto.Color;
+
+        if (dto.SortOrder.HasValue)
+            tag.SortOrder = dto.SortOrder.Value;
+
+        await _context.SaveChangesAsync();
+
+        return await GetTagByIdAsync(id);
+    }
+
+    public async Task<bool> DeleteTagAsync(int id)
+    {
+        var tag = await _context.Tags.FindAsync(id);
+        if (tag == null) return false;
+
+        _context.Tags.Remove(tag);
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     private async Task<string> GenerateArticleCodeAsync()

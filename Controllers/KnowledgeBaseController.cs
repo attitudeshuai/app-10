@@ -115,4 +115,66 @@ public class KnowledgeBaseController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpGet("tags")]
+    public async Task<ActionResult<PagedResult<TagDto>>> GetTags([FromQuery] TagQueryDto query)
+    {
+        var result = await _knowledgeBaseService.GetTagsPagedAsync(query);
+        return Ok(result);
+    }
+
+    [HttpGet("tags/all")]
+    public async Task<ActionResult<List<TagDto>>> GetAllTags([FromQuery] TagType? type = null)
+    {
+        var tags = await _knowledgeBaseService.GetAllTagsAsync(type);
+        return Ok(tags);
+    }
+
+    [HttpGet("tags/{id}")]
+    public async Task<ActionResult<TagDto>> GetTagById(int id)
+    {
+        var tag = await _knowledgeBaseService.GetTagByIdAsync(id);
+        if (tag == null) return NotFound();
+        return Ok(tag);
+    }
+
+    [HttpPost("tags")]
+    [Authorize(Roles = $"{nameof(UserRole.Admin)},{nameof(UserRole.Technician)}")]
+    public async Task<ActionResult<TagDto>> CreateTag([FromBody] CreateTagDto dto)
+    {
+        try
+        {
+            var tag = await _knowledgeBaseService.CreateTagAsync(dto);
+            return CreatedAtAction(nameof(GetTagById), new { id = tag.Id }, tag);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("tags/{id}")]
+    [Authorize(Roles = $"{nameof(UserRole.Admin)},{nameof(UserRole.Technician)}")]
+    public async Task<ActionResult<TagDto>> UpdateTag(int id, [FromBody] UpdateTagDto dto)
+    {
+        try
+        {
+            var tag = await _knowledgeBaseService.UpdateTagAsync(id, dto);
+            if (tag == null) return NotFound();
+            return Ok(tag);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("tags/{id}")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<IActionResult> DeleteTag(int id)
+    {
+        var result = await _knowledgeBaseService.DeleteTagAsync(id);
+        if (!result) return NotFound();
+        return NoContent();
+    }
 }

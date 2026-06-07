@@ -191,4 +191,11 @@ public interface IKnowledgeBaseService
     Task<KnowledgeBaseStatisticsDto> GetStatisticsAsync();
     Task<KnowledgeBaseArticleDto?> IncrementViewCountAsync(int id);
     Task<List<KnowledgeBaseArticleBriefDto>> GetRecommendedArticlesByDeviceIdAsync(int deviceId, int limit = 5);
+
+    Task<PagedResult<TagDto>> GetTagsPagedAsync(TagQueryDto query);
+    Task<List<TagDto>> GetAllTagsAsync(TagType? type = null);
+    Task<TagDto?> GetTagByIdAsync(int id);
+    Task<TagDto> CreateTagAsync(CreateTagDto dto);
+    Task<TagDto?> UpdateTagAsync(int id, UpdateTagDto dto);
+    Task<bool> DeleteTagAsync(int id);
 }

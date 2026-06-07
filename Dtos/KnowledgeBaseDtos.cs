@@ -18,6 +18,7 @@ public class KnowledgeBaseArticleDto
     public int ViewCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public List<TagDto> Tags { get; set; } = new();
 }
 
 public class KnowledgeBaseArticleBriefDto
@@ -35,6 +36,7 @@ public class KnowledgeBaseArticleBriefDto
     public int ViewCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public List<TagDto> Tags { get; set; } = new();
 }
 
 public class CreateKnowledgeBaseArticleDto
@@ -45,6 +47,7 @@ public class CreateKnowledgeBaseArticleDto
     public string? Keywords { get; set; }
     public int DeviceId { get; set; }
     public KnowledgeBaseStatus Status { get; set; } = KnowledgeBaseStatus.Draft;
+    public List<int> TagIds { get; set; } = new();
 }
 
 public class UpdateKnowledgeBaseArticleDto
@@ -55,6 +58,7 @@ public class UpdateKnowledgeBaseArticleDto
     public string? Keywords { get; set; }
     public int? DeviceId { get; set; }
     public KnowledgeBaseStatus? Status { get; set; }
+    public List<int>? TagIds { get; set; }
 }
 
 public class KnowledgeBaseArticleQueryDto : PagedQuery
@@ -63,6 +67,7 @@ public class KnowledgeBaseArticleQueryDto : PagedQuery
     public string? DeviceCategory { get; set; }
     public int? AuthorId { get; set; }
     public KnowledgeBaseStatus? Status { get; set; }
+    public List<int>? TagIds { get; set; }
 }
 
 public class KnowledgeBaseStatisticsDto
@@ -80,4 +85,37 @@ public class KnowledgeBaseCategoryStatDto
 {
     public string Category { get; set; } = string.Empty;
     public int ArticleCount { get; set; }
+}
+
+public class TagDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public TagType Type { get; set; }
+    public string? Color { get; set; }
+    public int SortOrder { get; set; }
+    public int ArticleCount { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateTagDto
+{
+    public string Name { get; set; } = string.Empty;
+    public TagType Type { get; set; } = TagType.Custom;
+    public string? Color { get; set; }
+    public int SortOrder { get; set; } = 0;
+}
+
+public class UpdateTagDto
+{
+    public string? Name { get; set; }
+    public TagType? Type { get; set; }
+    public string? Color { get; set; }
+    public int? SortOrder { get; set; }
+}
+
+public class TagQueryDto : PagedQuery
+{
+    public TagType? Type { get; set; }
+    public string? Keyword { get; set; }
 }

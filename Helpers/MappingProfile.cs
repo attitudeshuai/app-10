@@ -120,13 +120,20 @@ public class MappingProfile : Profile
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
             .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
             .ForMember(d => d.DeviceCategory, opt => opt.MapFrom(s => s.Device != null ? s.Device.Category : null))
-            .ForMember(d => d.AuthorName, opt => opt.MapFrom(s => s.Author != null ? s.Author.RealName : null));
+            .ForMember(d => d.AuthorName, opt => opt.MapFrom(s => s.Author != null ? s.Author.RealName : null))
+            .ForMember(d => d.Tags, opt => opt.MapFrom(s => s.ArticleTags.Select(at => at.Tag).ToList()));
 
         CreateMap<KnowledgeBaseArticle, KnowledgeBaseArticleBriefDto>()
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
             .ForMember(d => d.DeviceCategory, opt => opt.MapFrom(s => s.Device != null ? s.Device.Category : null))
-            .ForMember(d => d.AuthorName, opt => opt.MapFrom(s => s.Author != null ? s.Author.RealName : null));
+            .ForMember(d => d.AuthorName, opt => opt.MapFrom(s => s.Author != null ? s.Author.RealName : null))
+            .ForMember(d => d.Tags, opt => opt.MapFrom(s => s.ArticleTags.Select(at => at.Tag).ToList()));
 
         CreateMap<CreateKnowledgeBaseArticleDto, KnowledgeBaseArticle>();
+
+        CreateMap<Tag, TagDto>()
+            .ForMember(d => d.ArticleCount, opt => opt.MapFrom(s => s.ArticleTags != null ? s.ArticleTags.Count : 0));
+
+        CreateMap<CreateTagDto, Tag>();
     }
 }

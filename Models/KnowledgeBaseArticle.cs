@@ -23,4 +23,6 @@ public class KnowledgeBaseArticle
     public int ViewCount { get; set; } = 0;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<KnowledgeBaseArticleTag> ArticleTags { get; set; } = new List<KnowledgeBaseArticleTag>();
 }

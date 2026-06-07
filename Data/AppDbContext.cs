@@ -23,6 +23,8 @@ public class AppDbContext : DbContext
     public DbSet<MaintenanceContract> MaintenanceContracts { get; set; }
     public DbSet<DeviceBorrowRecord> DeviceBorrowRecords { get; set; }
     public DbSet<KnowledgeBaseArticle> KnowledgeBaseArticles { get; set; }
+    public DbSet<Tag> Tags { get; set; }
+    public DbSet<KnowledgeBaseArticleTag> KnowledgeBaseArticleTags { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -387,5 +389,28 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<KnowledgeBaseArticle>()
             .HasIndex(a => a.Status);
+
+        modelBuilder.Entity<Tag>()
+            .HasIndex(t => t.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<Tag>()
+            .Property(t => t.Type)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<KnowledgeBaseArticleTag>()
+            .HasKey(at => new { at.ArticleId, at.TagId });
+
+        modelBuilder.Entity<KnowledgeBaseArticleTag>()
+            .HasOne(at => at.Article)
+            .WithMany(a => a.ArticleTags)
+            .HasForeignKey(at => at.ArticleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<KnowledgeBaseArticleTag>()
+            .HasOne(at => at.Tag)
+            .WithMany(t => t.ArticleTags)
+            .HasForeignKey(at => at.TagId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

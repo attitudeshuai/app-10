@@ -328,6 +328,67 @@ public static class SeedData
 
             await context.KnowledgeBaseArticles.AddRangeAsync(kbArticles);
             await context.SaveChangesAsync();
+
+            if (!await context.Tags.AnyAsync())
+            {
+                var tags = new List<Tag>
+                {
+                    new() { Name = "机械故障", Type = TagType.FaultType, Color = "#ef4444", SortOrder = 1 },
+                    new() { Name = "电气故障", Type = TagType.FaultType, Color = "#f59e0b", SortOrder = 2 },
+                    new() { Name = "液压故障", Type = TagType.FaultType, Color = "#3b82f6", SortOrder = 3 },
+                    new() { Name = "气动故障", Type = TagType.FaultType, Color = "#8b5cf6", SortOrder = 4 },
+                    new() { Name = "控制系统", Type = TagType.FaultType, Color = "#10b981", SortOrder = 5 },
+                    new() { Name = "生产设备", Type = TagType.DeviceCategory, Color = "#06b6d4", SortOrder = 10 },
+                    new() { Name = "办公设备", Type = TagType.DeviceCategory, Color = "#6366f1", SortOrder = 11 },
+                    new() { Name = "IT设备", Type = TagType.DeviceCategory, Color = "#ec4899", SortOrder = 12 },
+                    new() { Name = "检测设备", Type = TagType.DeviceCategory, Color = "#14b8a6", SortOrder = 13 },
+                    new() { Name = "运输设备", Type = TagType.DeviceCategory, Color = "#f97316", SortOrder = 14 },
+                    new() { Name = "日常维护", Type = TagType.Custom, Color = "#22c55e", SortOrder = 20 },
+                    new() { Name = "故障排查", Type = TagType.Custom, Color = "#ef4444", SortOrder = 21 },
+                    new() { Name = "更换指南", Type = TagType.Custom, Color = "#3b82f6", SortOrder = 22 },
+                    new() { Name = "安全操作", Type = TagType.Custom, Color = "#f59e0b", SortOrder = 23 },
+                    new() { Name = "保养技巧", Type = TagType.Custom, Color = "#8b5cf6", SortOrder = 24 }
+                };
+
+                await context.Tags.AddRangeAsync(tags);
+                await context.SaveChangesAsync();
+
+                var faultTypeTags = tags.Where(t => t.Type == TagType.FaultType).ToList();
+                var customTags = tags.Where(t => t.Type == TagType.Custom).ToList();
+
+                var articleTagMappings = new[]
+                {
+                    new[] { "机械故障", "更换指南", "日常维护" },
+                    new[] { "电气故障", "故障排查" },
+                    new[] { "电气故障", "日常维护", "保养技巧" },
+                    new[] { "液压故障", "故障排查" },
+                    new[] { "机械故障", "更换指南", "保养技巧" },
+                    new[] { "控制系统", "故障排查", "日常维护" },
+                    new[] { "电气故障", "故障排查", "更换指南" },
+                    new[] { "日常维护", "保养技巧" },
+                    new[] { "控制系统", "故障排查" },
+                    new[] { "气动故障", "故障排查" }
+                };
+
+                var articleTagList = new List<KnowledgeBaseArticleTag>();
+                for (int i = 0; i < kbArticles.Count && i < articleTagMappings.Length; i++)
+                {
+                    var article = kbArticles[i];
+                    var mappingNames = articleTagMappings[i];
+                    var matchingTags = tags.Where(t => mappingNames.Contains(t.Name)).ToList();
+                    foreach (var tag in matchingTags)
+                    {
+                        articleTagList.Add(new KnowledgeBaseArticleTag
+                        {
+                            ArticleId = article.Id,
+                            TagId = tag.Id
+                        });
+                    }
+                }
+
+                await context.KnowledgeBaseArticleTags.AddRangeAsync(articleTagList);
+                await context.SaveChangesAsync();
+            }
         }
     }
 }
