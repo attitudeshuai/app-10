@@ -24,8 +24,7 @@ public interface IUserService
 public interface IDeviceService
 {
     Task<PagedResult<DeviceDto>> GetPagedAsync(DeviceQueryDto query);
-    Task<DeviceDto?> GetByIdAsync(int id);
-    Task<DeviceDetailDto?> GetDetailByIdAsync(int id);
+    Task<DeviceDetailDto?> GetByIdAsync(int id);
     Task<DeviceDto> CreateAsync(CreateDeviceDto dto);
     Task<DeviceDto?> UpdateAsync(int id, UpdateDeviceDto dto);
     Task<bool> DeleteAsync(int id);

@@ -33,17 +33,9 @@ public class DevicesController : ControllerBase
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<DeviceDto>> GetById(int id)
+    public async Task<ActionResult<DeviceDetailDto>> GetById(int id)
     {
         var device = await _deviceService.GetByIdAsync(id);
-        if (device == null) return NotFound();
-        return Ok(device);
-    }
-
-    [HttpGet("{id}/detail")]
-    public async Task<ActionResult<DeviceDetailDto>> GetDetail(int id)
-    {
-        var device = await _deviceService.GetDetailByIdAsync(id);
         if (device == null) return NotFound();
         return Ok(device);
     }

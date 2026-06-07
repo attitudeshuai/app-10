@@ -71,13 +71,7 @@ public class DeviceService : IDeviceService
         };
     }
 
-    public async Task<DeviceDto?> GetByIdAsync(int id)
-    {
-        var device = await _context.Devices.FindAsync(id);
-        return device == null ? null : _mapper.Map<DeviceDto>(device);
-    }
-
-    public async Task<DeviceDetailDto?> GetDetailByIdAsync(int id)
+    public async Task<DeviceDetailDto?> GetByIdAsync(int id)
     {
         var device = await _context.Devices
             .Include(d => d.InspectionRecords)
@@ -154,8 +148,9 @@ public class DeviceService : IDeviceService
         var hasRelatedPlans = await _context.MaintenancePlans.AnyAsync(p => p.DeviceId == id);
         var hasRelatedFaults = await _context.FaultReports.AnyAsync(f => f.DeviceId == id);
         var hasRelatedInspectionPlans = await _context.InspectionPlans.AnyAsync(p => p.DeviceId == id);
+        var hasRelatedInspectionTasks = await _context.InspectionTasks.AnyAsync(t => t.DeviceId == id);
         var hasRelatedInspectionRecords = await _context.InspectionRecords.AnyAsync(r => r.DeviceId == id);
-        if (hasRelatedPlans || hasRelatedFaults || hasRelatedInspectionPlans || hasRelatedInspectionRecords)
+        if (hasRelatedPlans || hasRelatedFaults || hasRelatedInspectionPlans || hasRelatedInspectionTasks || hasRelatedInspectionRecords)
         {
             throw new InvalidOperationException("该设备有关联的保养计划、故障报修或巡检记录，无法删除");
         }

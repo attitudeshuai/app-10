@@ -233,14 +233,15 @@ public class InspectionPlanService : IInspectionPlanService
 
         for (int i = 0; i < count; i++)
         {
-            var scheduledDate = GetNextScheduledDate(startDate, plan.Cycle, i + (lastTask != null ? 1 : 0));
+            var scheduledDate = GetNextScheduledDate(plan.StartDate, plan.Cycle, i + (lastTask != null ? plan.GeneratedTaskCount + 1 : 0));
 
             if (plan.EndDate.HasValue && scheduledDate > plan.EndDate.Value)
             {
                 break;
             }
 
-            var taskCode = $"IT{plan.PlanCode}-{scheduledDate:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+            var sequence = await GetNextTaskSequenceAsync(planId, scheduledDate);
+            var taskCode = $"IT{plan.PlanCode}-{scheduledDate:yyyyMMdd}-{sequence:D3}";
 
             var task = new InspectionTask
             {
@@ -267,14 +268,46 @@ public class InspectionPlanService : IInspectionPlanService
         return generatedCount;
     }
 
+    private async Task<int> GetNextTaskSequenceAsync(int planId, DateTime scheduledDate)
+    {
+        var dateStart = scheduledDate.Date;
+        var dateEnd = dateStart.AddDays(1);
+
+        var count = await _context.InspectionTasks
+            .Where(t => t.InspectionPlanId == planId
+                && t.ScheduledDate >= dateStart
+                && t.ScheduledDate < dateEnd)
+            .CountAsync();
+
+        return count + 1;
+    }
+
     private DateTime GetNextScheduledDate(DateTime startDate, InspectionCycle cycle, int index)
     {
         return cycle switch
         {
             InspectionCycle.Daily => startDate.AddDays(index),
             InspectionCycle.Weekly => startDate.AddDays(index * 7),
-            InspectionCycle.Monthly => startDate.AddMonths(index),
+            InspectionCycle.Monthly => GetMonthlyScheduledDate(startDate, index),
             _ => startDate.AddDays(index)
         };
+    }
+
+    private DateTime GetMonthlyScheduledDate(DateTime startDate, int monthsToAdd)
+    {
+        var targetYear = startDate.Year;
+        var targetMonth = startDate.Month + monthsToAdd;
+
+        while (targetMonth > 12)
+        {
+            targetYear++;
+            targetMonth -= 12;
+        }
+
+        var daysInMonth = DateTime.DaysInMonth(targetYear, targetMonth);
+        var day = Math.Min(startDate.Day, daysInMonth);
+
+        return new DateTime(targetYear, targetMonth, day,
+            startDate.Hour, startDate.Minute, startDate.Second, startDate.Kind);
     }
 }
