@@ -116,22 +116,39 @@ public class FaultReportService : IFaultReportService
             throw new KeyNotFoundException("设备不存在");
         }
 
-        var report = _mapper.Map<FaultReport>(dto);
-        report.ReporterId = reporterId;
-        report.Status = FaultStatus.Pending;
-        report.ReportTime = DateTime.UtcNow;
-        report.CreatedAt = DateTime.UtcNow;
-        report.UpdatedAt = DateTime.UtcNow;
+        var needStatusUpdate = device.Status == DeviceStatus.Running || device.Status == DeviceStatus.Standby;
 
-        _context.FaultReports.Add(report);
-        await _context.SaveChangesAsync();
-
-        if (device.Status == DeviceStatus.Running || device.Status == DeviceStatus.Standby)
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
         {
-            _ = _deviceService.UpdateStatusAsync(device.Id, DeviceStatus.Fault);
-        }
+            var report = _mapper.Map<FaultReport>(dto);
+            report.ReporterId = reporterId;
+            report.Status = FaultStatus.Pending;
+            report.ReportTime = DateTime.UtcNow;
+            report.CreatedAt = DateTime.UtcNow;
+            report.UpdatedAt = DateTime.UtcNow;
 
-        return await GetByIdAsync(report.Id) ?? _mapper.Map<FaultReportDto>(report);
+            _context.FaultReports.Add(report);
+            await _context.SaveChangesAsync();
+
+            if (needStatusUpdate)
+            {
+                var result = await _deviceService.UpdateStatusAsync(device.Id, DeviceStatus.Fault);
+                if (result == null)
+                {
+                    await transaction.RollbackAsync();
+                    throw new InvalidOperationException("设备状态更新失败，故障报修已回滚");
+                }
+            }
+
+            await transaction.CommitAsync();
+            return await GetByIdAsync(report.Id) ?? _mapper.Map<FaultReportDto>(report);
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            throw new InvalidOperationException($"创建故障报修失败: {ex.Message}", ex);
+        }
     }
 
     public async Task<FaultReportDto?> UpdateAsync(int id, UpdateFaultReportDto dto)

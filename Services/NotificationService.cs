@@ -205,10 +205,24 @@ public class NotificationService : INotificationService
                 IsRead = false
             };
 
-            if (!_queue.Enqueue(notification))
+            if (_queue.Enqueue(notification))
             {
-                _logger.LogError("通知入队失败（队列已满），用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
+                return;
             }
+
+            _logger.LogWarning("通知入队失败，准备重试，用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
+            await Task.Delay(50);
+
+            if (_queue.Enqueue(notification))
+            {
+                _logger.LogInformation("通知入队重试成功，用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
+                return;
+            }
+
+            _logger.LogWarning("通知入队重试失败，降级为直接写入数据库，用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
+            _context.Notifications.Add(notification);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("通知降级写库成功，通知ID: {NotificationId}", notification.Id);
         }
         catch (Exception ex)
         {
@@ -248,11 +262,43 @@ public class NotificationService : INotificationService
                 IsRead = false
             }).ToList();
 
-            var successCount = _queue.EnqueueRange(notifications);
-            if (successCount < notifications.Count)
+            var failedNotifications = new List<Notification>();
+
+            foreach (var notification in notifications)
             {
-                _logger.LogError("批量通知入队部分失败（队列可能已满），成功: {SuccessCount}, 总计: {TotalCount}", successCount, notifications.Count);
+                if (!_queue.Enqueue(notification))
+                {
+                    failedNotifications.Add(notification);
+                }
             }
+
+            if (failedNotifications.Count == 0)
+            {
+                return;
+            }
+
+            _logger.LogWarning("批量通知入队部分失败，首次失败数量: {FailedCount}, 总计: {TotalCount}，准备重试", failedNotifications.Count, notifications.Count);
+            await Task.Delay(50);
+
+            var retryFailed = new List<Notification>();
+            foreach (var notification in failedNotifications)
+            {
+                if (!_queue.Enqueue(notification))
+                {
+                    retryFailed.Add(notification);
+                }
+            }
+
+            if (retryFailed.Count == 0)
+            {
+                _logger.LogInformation("批量通知重试后全部入队成功");
+                return;
+            }
+
+            _logger.LogWarning("批量通知重试后仍有 {FailedCount} 条失败，降级为直接写入数据库", retryFailed.Count);
+            _context.Notifications.AddRange(retryFailed);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation("批量通知降级写库完成，数量: {Count}", retryFailed.Count);
         }
         catch (Exception ex)
         {
