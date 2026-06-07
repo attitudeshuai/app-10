@@ -26,6 +26,7 @@ public class FaultReportDto
     public string? Remark { get; set; }
     public DateTime CreatedAt { get; set; }
     public List<KnowledgeBaseArticleBriefDto>? RecommendedArticles { get; set; }
+    public List<SparePartConsumptionDto>? SparePartConsumptions { get; set; }
 }
 
 public class CreateFaultReportDto

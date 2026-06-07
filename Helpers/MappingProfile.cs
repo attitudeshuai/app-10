@@ -28,7 +28,8 @@ public class MappingProfile : Profile
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
             .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
             .ForMember(d => d.ReporterName, opt => opt.MapFrom(s => s.Reporter != null ? s.Reporter.RealName : null))
-            .ForMember(d => d.AssignedTechnicianName, opt => opt.MapFrom(s => s.AssignedTechnician != null ? s.AssignedTechnician.RealName : null));
+            .ForMember(d => d.AssignedTechnicianName, opt => opt.MapFrom(s => s.AssignedTechnician != null ? s.AssignedTechnician.RealName : null))
+            .ForMember(d => d.SparePartConsumptions, opt => opt.MapFrom(s => s.SparePartConsumptions));
         CreateMap<CreateFaultReportDto, FaultReport>();
 
         CreateMap<SparePart, SparePartDto>()

@@ -97,4 +97,11 @@ public class SparePartsController : ControllerBase
         var result = await _sparePartService.GetConsumptionsAsync(query);
         return Ok(result);
     }
+
+    [HttpGet("by-device/{deviceId}")]
+    public async Task<ActionResult<List<SparePartDto>>> GetByDeviceId(int deviceId)
+    {
+        var result = await _sparePartService.GetByDeviceIdAsync(deviceId);
+        return Ok(result);
+    }
 }

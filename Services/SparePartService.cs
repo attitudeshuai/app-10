@@ -256,4 +256,16 @@ public class SparePartService : ISparePartService
             TotalPages = (int)Math.Ceiling(totalCount / (double)query.PageSize)
         };
     }
+
+    public async Task<List<SparePartDto>> GetByDeviceIdAsync(int deviceId)
+    {
+        var spareParts = await _context.SpareParts
+            .Include(s => s.Device)
+            .Where(s => s.DeviceId == deviceId)
+            .OrderBy(s => s.Name)
+            .ThenBy(s => s.Specification)
+            .ToListAsync();
+
+        return _mapper.Map<List<SparePartDto>>(spareParts);
+    }
 }

@@ -129,6 +129,10 @@ public class FaultReportsController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (KeyNotFoundException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("{id}/cancel")]

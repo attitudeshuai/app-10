@@ -84,6 +84,7 @@ public interface ISparePartService
     Task<bool> DeleteAsync(int id);
     Task<SparePartStatisticsDto> GetStatisticsAsync();
     Task<PagedResult<SparePartConsumptionDto>> GetConsumptionsAsync(SparePartConsumptionQueryDto query);
+    Task<List<SparePartDto>> GetByDeviceIdAsync(int deviceId);
 }
 
 public interface IInspectionPlanService
