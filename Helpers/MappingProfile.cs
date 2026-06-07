@@ -36,7 +36,10 @@ public class MappingProfile : Profile
 
         CreateMap<Device, DeviceDetailDto>()
             .ForMember(d => d.RecentInspectionRecords, opt => opt.Ignore())
-            .ForMember(d => d.InspectionRecordCount, opt => opt.Ignore());
+            .ForMember(d => d.InspectionRecordCount, opt => opt.Ignore())
+            .ForMember(d => d.BorrowRecords, opt => opt.Ignore())
+            .ForMember(d => d.BorrowRecordCount, opt => opt.Ignore())
+            .ForMember(d => d.CurrentBorrowRecord, opt => opt.Ignore());
 
         CreateMap<CreateDeviceDto, Device>();
 
@@ -95,5 +98,12 @@ public class MappingProfile : Profile
             .ForMember(d => d.Status, opt => opt.Ignore());
 
         CreateMap<CreateMaintenanceContractDto, MaintenanceContract>();
+
+        CreateMap<DeviceBorrowRecord, DeviceBorrowRecordDto>()
+            .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
+            .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
+            .ForMember(d => d.OperatorName, opt => opt.MapFrom(s => s.Operator != null ? s.Operator.RealName : null))
+            .ForMember(d => d.ReturnOperatorName, opt => opt.MapFrom(s => s.ReturnOperator != null ? s.ReturnOperator.RealName : null));
+        CreateMap<CreateDeviceBorrowDto, DeviceBorrowRecord>();
     }
 }

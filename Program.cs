@@ -89,6 +89,7 @@ builder.Services.AddScoped<IInspectionPlanService, InspectionPlanService>();
 builder.Services.AddScoped<IInspectionTaskService, InspectionTaskService>();
 builder.Services.AddScoped<IInspectionRecordService, InspectionRecordService>();
 builder.Services.AddScoped<IMaintenanceContractService, MaintenanceContractService>();
+builder.Services.AddScoped<IDeviceBorrowService, DeviceBorrowService>();
 builder.Services.AddSingleton<INotificationQueue, NotificationQueue>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHostedService<NotificationBackgroundService>();

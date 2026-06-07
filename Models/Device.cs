@@ -6,7 +6,14 @@ public enum DeviceStatus
     Standby = 1,
     Maintenance = 2,
     Fault = 3,
-    Scrapped = 4
+    Scrapped = 4,
+    Borrowed = 5
+}
+
+public enum BorrowType
+{
+    External = 0,
+    Internal = 1
 }
 
 public class Device
@@ -34,4 +41,5 @@ public class Device
     public ICollection<InspectionTask> InspectionTasks { get; set; } = new List<InspectionTask>();
     public ICollection<InspectionRecord> InspectionRecords { get; set; } = new List<InspectionRecord>();
     public ICollection<MaintenanceContract> MaintenanceContracts { get; set; } = new List<MaintenanceContract>();
+    public ICollection<DeviceBorrowRecord> BorrowRecords { get; set; } = new List<DeviceBorrowRecord>();
 }

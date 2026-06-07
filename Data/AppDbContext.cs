@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
     public DbSet<MaintenanceContract> MaintenanceContracts { get; set; }
+    public DbSet<DeviceBorrowRecord> DeviceBorrowRecords { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -273,5 +274,41 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<MaintenanceContract>()
             .HasIndex(c => new { c.DeviceId, c.EndDate });
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasIndex(r => r.RecordCode)
+            .IsUnique();
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .Property(r => r.BorrowType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .Property(r => r.StatusBeforeBorrow)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasOne(r => r.Device)
+            .WithMany(d => d.BorrowRecords)
+            .HasForeignKey(r => r.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasOne(r => r.Operator)
+            .WithMany()
+            .HasForeignKey(r => r.OperatorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasOne(r => r.ReturnOperator)
+            .WithMany()
+            .HasForeignKey(r => r.ReturnOperatorId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasIndex(r => new { r.DeviceId, r.IsReturned });
+
+        modelBuilder.Entity<DeviceBorrowRecord>()
+            .HasIndex(r => r.BorrowTime);
     }
 }

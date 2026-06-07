@@ -150,3 +150,14 @@ public interface IMaintenanceContractService
     Task<List<MaintenanceContractDto>> GetDeviceContractsAsync(int deviceId);
     Task<int> SendExpiringRemindersAsync(int daysAhead = 30);
 }
+
+public interface IDeviceBorrowService
+{
+    Task<PagedResult<DeviceBorrowRecordDto>> GetPagedAsync(DeviceBorrowQueryDto query);
+    Task<DeviceBorrowRecordDto?> GetByIdAsync(int id);
+    Task<DeviceBorrowRecordDto> BorrowAsync(CreateDeviceBorrowDto dto, int operatorId);
+    Task<DeviceBorrowRecordDto?> ReturnAsync(int id, ReturnDeviceBorrowDto dto, int operatorId);
+    Task<bool> DeleteAsync(int id);
+    Task<DeviceBorrowStatisticsDto> GetStatisticsAsync();
+    Task<List<DeviceBorrowRecordDto>> GetDeviceBorrowRecordsAsync(int deviceId);
+}

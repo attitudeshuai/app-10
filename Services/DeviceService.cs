@@ -88,6 +88,10 @@ public class DeviceService : IDeviceService
                 .ThenInclude(r => r.Photos)
             .Include(d => d.InspectionRecords)
                 .ThenInclude(r => r.Inspector)
+            .Include(d => d.BorrowRecords)
+                .ThenInclude(r => r.Operator)
+            .Include(d => d.BorrowRecords)
+                .ThenInclude(r => r.ReturnOperator)
             .FirstOrDefaultAsync(d => d.Id == id);
 
         if (device == null) return null;
@@ -99,6 +103,19 @@ public class DeviceService : IDeviceService
             .Take(10)
             .Select(r => _mapper.Map<InspectionRecordDto>(r))
             .ToList();
+
+        var borrowRecords = device.BorrowRecords
+            .OrderByDescending(r => r.BorrowTime)
+            .ToList();
+        detail.BorrowRecordCount = borrowRecords.Count;
+        detail.BorrowRecords = borrowRecords
+            .Take(10)
+            .Select(r => _mapper.Map<DeviceBorrowRecordDto>(r))
+            .ToList();
+        detail.CurrentBorrowRecord = borrowRecords
+            .FirstOrDefault(r => !r.IsReturned) != null
+            ? _mapper.Map<DeviceBorrowRecordDto>(borrowRecords.First(r => !r.IsReturned))
+            : null;
 
         return detail;
     }
@@ -252,9 +269,10 @@ public class DeviceService : IDeviceService
         var hasRelatedInspectionPlans = await _context.InspectionPlans.AnyAsync(p => p.DeviceId == id);
         var hasRelatedInspectionTasks = await _context.InspectionTasks.AnyAsync(t => t.DeviceId == id);
         var hasRelatedInspectionRecords = await _context.InspectionRecords.AnyAsync(r => r.DeviceId == id);
-        if (hasRelatedPlans || hasRelatedFaults || hasRelatedInspectionPlans || hasRelatedInspectionTasks || hasRelatedInspectionRecords)
+        var hasRelatedBorrowRecords = await _context.DeviceBorrowRecords.AnyAsync(r => r.DeviceId == id);
+        if (hasRelatedPlans || hasRelatedFaults || hasRelatedInspectionPlans || hasRelatedInspectionTasks || hasRelatedInspectionRecords || hasRelatedBorrowRecords)
         {
-            throw new InvalidOperationException("该设备有关联的保养计划、故障报修或巡检记录，无法删除");
+            throw new InvalidOperationException("该设备有关联的保养计划、故障报修、巡检记录或借还记录，无法删除");
         }
 
         _context.Devices.Remove(device);
@@ -270,6 +288,7 @@ public class DeviceService : IDeviceService
         var maintenance = await _context.Devices.CountAsync(d => d.Status == DeviceStatus.Maintenance);
         var fault = await _context.Devices.CountAsync(d => d.Status == DeviceStatus.Fault);
         var scrapped = await _context.Devices.CountAsync(d => d.Status == DeviceStatus.Scrapped);
+        var borrowed = await _context.Devices.CountAsync(d => d.Status == DeviceStatus.Borrowed);
 
         var byCategory = await _context.Devices
             .GroupBy(d => d.Category)
@@ -289,6 +308,7 @@ public class DeviceService : IDeviceService
             MaintenanceCount = maintenance,
             FaultCount = fault,
             ScrappedCount = scrapped,
+            BorrowedCount = borrowed,
             ByCategory = byCategory
         };
     }

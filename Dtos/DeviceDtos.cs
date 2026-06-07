@@ -24,6 +24,9 @@ public class DeviceDetailDto : DeviceDto
 {
     public List<InspectionRecordDto> RecentInspectionRecords { get; set; } = new List<InspectionRecordDto>();
     public int InspectionRecordCount { get; set; }
+    public List<DeviceBorrowRecordDto> BorrowRecords { get; set; } = new List<DeviceBorrowRecordDto>();
+    public int BorrowRecordCount { get; set; }
+    public DeviceBorrowRecordDto? CurrentBorrowRecord { get; set; }
 }
 
 public class CreateDeviceDto
@@ -70,6 +73,7 @@ public class DeviceStatisticsDto
     public int MaintenanceCount { get; set; }
     public int FaultCount { get; set; }
     public int ScrappedCount { get; set; }
+    public int BorrowedCount { get; set; }
     public List<CategoryStatDto>? ByCategory { get; set; }
 }
 
@@ -77,4 +81,68 @@ public class CategoryStatDto
 {
     public string Category { get; set; } = string.Empty;
     public int Count { get; set; }
+}
+
+public class DeviceBorrowRecordDto
+{
+    public int Id { get; set; }
+    public string RecordCode { get; set; } = string.Empty;
+    public int DeviceId { get; set; }
+    public string? DeviceName { get; set; }
+    public string? DeviceCode { get; set; }
+    public BorrowType BorrowType { get; set; }
+    public string BorrowerName { get; set; } = string.Empty;
+    public string? BorrowerContact { get; set; }
+    public string? BorrowerDepartment { get; set; }
+    public string? BorrowerCompany { get; set; }
+    public DateTime BorrowTime { get; set; }
+    public DateTime ExpectedReturnTime { get; set; }
+    public DateTime? ActualReturnTime { get; set; }
+    public string? BorrowPurpose { get; set; }
+    public string? ReturnRemark { get; set; }
+    public int? OperatorId { get; set; }
+    public string? OperatorName { get; set; }
+    public int? ReturnOperatorId { get; set; }
+    public string? ReturnOperatorName { get; set; }
+    public DeviceStatus StatusBeforeBorrow { get; set; }
+    public bool IsReturned { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateDeviceBorrowDto
+{
+    public int DeviceId { get; set; }
+    public BorrowType BorrowType { get; set; }
+    public string BorrowerName { get; set; } = string.Empty;
+    public string? BorrowerContact { get; set; }
+    public string? BorrowerDepartment { get; set; }
+    public string? BorrowerCompany { get; set; }
+    public DateTime BorrowTime { get; set; }
+    public DateTime ExpectedReturnTime { get; set; }
+    public string? BorrowPurpose { get; set; }
+}
+
+public class ReturnDeviceBorrowDto
+{
+    public string? ReturnRemark { get; set; }
+}
+
+public class DeviceBorrowQueryDto : PagedQuery
+{
+    public int? DeviceId { get; set; }
+    public BorrowType? BorrowType { get; set; }
+    public bool? IsReturned { get; set; }
+    public string? BorrowerName { get; set; }
+    public DateTime? BorrowTimeFrom { get; set; }
+    public DateTime? BorrowTimeTo { get; set; }
+}
+
+public class DeviceBorrowStatisticsDto
+{
+    public int TotalCount { get; set; }
+    public int BorrowingCount { get; set; }
+    public int ReturnedCount { get; set; }
+    public int ExternalBorrowCount { get; set; }
+    public int InternalBorrowCount { get; set; }
+    public int OverdueCount { get; set; }
 }
