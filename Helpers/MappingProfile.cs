@@ -66,5 +66,9 @@ public class MappingProfile : Profile
         CreateMap<CreateInspectionRecordDto, InspectionRecord>();
 
         CreateMap<InspectionPhoto, InspectionPhotoDto>();
+
+        CreateMap<Notification, NotificationDto>()
+            .ForMember(d => d.UserName, opt => opt.MapFrom(s => s.User != null ? s.User.RealName : null));
+        CreateMap<CreateNotificationDto, Notification>();
     }
 }

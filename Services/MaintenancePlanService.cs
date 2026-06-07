@@ -10,11 +10,13 @@ public class MaintenancePlanService : IMaintenancePlanService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public MaintenancePlanService(AppDbContext context, IMapper mapper)
+    public MaintenancePlanService(AppDbContext context, IMapper mapper, INotificationService notificationService)
     {
         _context = context;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<PagedResult<MaintenancePlanDto>> GetPagedAsync(MaintenancePlanQueryDto query)
@@ -177,6 +179,21 @@ public class MaintenancePlanService : IMaintenancePlanService
         }
 
         await _context.SaveChangesAsync();
+
+        if (plan.ResponsibleTechnicianId.HasValue)
+        {
+            _ = _notificationService.EnqueueAsync(new CreateNotificationDto
+            {
+                UserId = plan.ResponsibleTechnicianId.Value,
+                Title = $"保养计划已开始: {plan.PlanCode}",
+                Content = $"保养计划 {plan.Title}（{plan.PlanCode}）已开始执行，请按照计划内容完成保养工作。",
+                Type = NotificationType.MaintenanceStarted,
+                Priority = NotificationPriority.Medium,
+                RelatedEntityType = RelatedEntityType.MaintenancePlan,
+                RelatedEntityId = plan.Id
+            });
+        }
+
         return await GetByIdAsync(id);
     }
 
@@ -202,6 +219,26 @@ public class MaintenancePlanService : IMaintenancePlanService
         }
 
         await _context.SaveChangesAsync();
+
+        var adminUserIds = await _context.Users
+            .Where(u => u.Role == UserRole.Admin && u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        if (adminUserIds.Count > 0)
+        {
+            _ = _notificationService.BatchEnqueueAsync(new BatchCreateNotificationDto
+            {
+                UserIds = adminUserIds,
+                Title = $"保养计划已完成: {plan.PlanCode}",
+                Content = $"保养计划 {plan.Title}（{plan.PlanCode}）已完成，请查看保养结果。",
+                Type = NotificationType.MaintenanceCompleted,
+                Priority = NotificationPriority.Medium,
+                RelatedEntityType = RelatedEntityType.MaintenancePlan,
+                RelatedEntityId = plan.Id
+            });
+        }
+
         return await GetByIdAsync(id);
     }
 
@@ -246,5 +283,46 @@ public class MaintenancePlanService : IMaintenancePlanService
             ThisMonthCompletedCount = thisMonthCompleted,
             CompletionRate = completionRate
         };
+    }
+
+    public async Task<int> SendUpcomingRemindersAsync(int daysAhead = 3)
+    {
+        var now = DateTime.UtcNow;
+        var reminderDate = now.AddDays(daysAhead);
+
+        var upcomingPlans = await _context.MaintenancePlans
+            .Include(p => p.ResponsibleTechnician)
+            .Include(p => p.Device)
+            .Where(p => p.Status == MaintenancePlanStatus.Pending
+                && p.PlannedDate >= now
+                && p.PlannedDate <= reminderDate
+                && p.ResponsibleTechnicianId.HasValue
+                && p.ResponsibleTechnician != null
+                && p.ResponsibleTechnician.IsActive)
+            .ToListAsync();
+
+        var count = 0;
+        foreach (var plan in upcomingPlans)
+        {
+            var daysLeft = (int)(plan.PlannedDate - now).TotalDays;
+            var timeText = daysLeft <= 0 ? "今天" :
+                           daysLeft == 1 ? "明天" :
+                           daysLeft == 2 ? "后天" :
+                           $"{daysLeft}天后";
+
+            _ = _notificationService.EnqueueAsync(new CreateNotificationDto
+            {
+                UserId = plan.ResponsibleTechnicianId!.Value,
+                Title = $"保养计划即将到期: {plan.PlanCode}",
+                Content = $"保养计划 {plan.Title}（{plan.PlanCode}）将于{timeText}到期，请提前做好准备。设备：{plan.Device?.Name ?? plan.DeviceId.ToString()}。",
+                Type = NotificationType.MaintenanceReminder,
+                Priority = daysLeft <= 1 ? NotificationPriority.High : NotificationPriority.Medium,
+                RelatedEntityType = RelatedEntityType.MaintenancePlan,
+                RelatedEntityId = plan.Id
+            });
+            count++;
+        }
+
+        return count;
     }
 }

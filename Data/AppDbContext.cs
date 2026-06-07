@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<InspectionTask> InspectionTasks { get; set; }
     public DbSet<InspectionRecord> InspectionRecords { get; set; }
     public DbSet<InspectionPhoto> InspectionPhotos { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -202,6 +203,30 @@ public class AppDbContext : DbContext
             .HasOne(p => p.InspectionRecord)
             .WithMany(r => r.Photos)
             .HasForeignKey(p => p.InspectionRecordId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.UserId, n.IsRead, n.CreatedAt });
+
+        modelBuilder.Entity<Notification>()
+            .HasIndex(n => new { n.UserId, n.CreatedAt });
+
+        modelBuilder.Entity<Notification>()
+            .Property(n => n.Type)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Notification>()
+            .Property(n => n.Priority)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Notification>()
+            .Property(n => n.RelatedEntityType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(n => n.User)
+            .WithMany()
+            .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

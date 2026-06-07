@@ -42,6 +42,7 @@ public interface IMaintenancePlanService
     Task<MaintenancePlanDto?> CompleteAsync(int id, ExecuteMaintenancePlanDto dto);
     Task<MaintenancePlanDto?> CancelAsync(int id);
     Task<MaintenanceStatisticsDto> GetStatisticsAsync();
+    Task<int> SendUpcomingRemindersAsync(int daysAhead = 3);
 }
 
 public interface IFaultReportService
@@ -101,4 +102,27 @@ public interface IInspectionRecordService
     Task<List<InspectionRecordDto>> GetDeviceInspectionHistoryAsync(int deviceId);
     Task<InspectionPhotoDto> UploadPhotoAsync(int recordId, IFormFile file, string? description);
     Task<InspectionStatisticsDto> GetStatisticsAsync();
+}
+
+public interface INotificationService
+{
+    Task<PagedResult<NotificationDto>> GetPagedAsync(int userId, NotificationQueryDto query);
+    Task<NotificationDto?> GetByIdAsync(int id, int userId);
+    Task<NotificationStatisticsDto> GetStatisticsAsync(int userId);
+    Task<NotificationDto> CreateAsync(CreateNotificationDto dto);
+    Task BatchCreateAsync(BatchCreateNotificationDto dto);
+    Task EnqueueAsync(CreateNotificationDto dto);
+    Task BatchEnqueueAsync(BatchCreateNotificationDto dto);
+    Task<NotificationDto?> MarkAsReadAsync(int id, int userId);
+    Task MarkAllAsReadAsync(int userId);
+    Task<bool> DeleteAsync(int id, int userId);
+    Task<int> DeleteReadAsync(int userId);
+}
+
+public interface INotificationQueue
+{
+    void Enqueue(Notification notification);
+    void EnqueueRange(IEnumerable<Notification> notifications);
+    Task<List<Notification>> DequeueBatchAsync(int batchSize, CancellationToken stoppingToken);
+    int GetQueueCount();
 }

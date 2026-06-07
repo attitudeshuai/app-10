@@ -10,11 +10,13 @@ public class FaultReportService : IFaultReportService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public FaultReportService(AppDbContext context, IMapper mapper)
+    public FaultReportService(AppDbContext context, IMapper mapper, INotificationService notificationService)
     {
         _context = context;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<PagedResult<FaultReportDto>> GetPagedAsync(FaultReportQueryDto query)
@@ -178,6 +180,19 @@ public class FaultReportService : IFaultReportService
         report.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
+
+        _ = _notificationService.EnqueueAsync(new CreateNotificationDto
+        {
+            UserId = dto.TechnicianId,
+            Title = $"新故障报修派单: {report.ReportCode}",
+            Content = $"您有新的故障报修任务待处理：{report.Title}（{report.ReportCode}），请及时查看并处理。",
+            Type = NotificationType.FaultAssigned,
+            Priority = report.Priority == FaultPriority.Urgent ? NotificationPriority.Urgent :
+                       report.Priority == FaultPriority.High ? NotificationPriority.High : NotificationPriority.Medium,
+            RelatedEntityType = RelatedEntityType.FaultReport,
+            RelatedEntityId = report.Id
+        });
+
         return await GetByIdAsync(id);
     }
 
@@ -276,6 +291,18 @@ public class FaultReportService : IFaultReportService
         }
 
         await _context.SaveChangesAsync();
+
+        _ = _notificationService.EnqueueAsync(new CreateNotificationDto
+        {
+            UserId = report.ReporterId,
+            Title = $"故障报修已完成: {report.ReportCode}",
+            Content = $"您提交的故障报修 {report.Title}（{report.ReportCode}）已完成处理，请查看处理结果。",
+            Type = NotificationType.FaultCompleted,
+            Priority = NotificationPriority.Medium,
+            RelatedEntityType = RelatedEntityType.FaultReport,
+            RelatedEntityId = report.Id
+        });
+
         return await GetByIdAsync(id);
     }
 

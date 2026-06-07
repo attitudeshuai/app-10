@@ -10,11 +10,13 @@ public class DeviceService : IDeviceService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public DeviceService(AppDbContext context, IMapper mapper)
+    public DeviceService(AppDbContext context, IMapper mapper, INotificationService notificationService)
     {
         _context = context;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<PagedResult<DeviceDto>> GetPagedAsync(DeviceQueryDto query)
@@ -115,6 +117,8 @@ public class DeviceService : IDeviceService
         var device = await _context.Devices.FindAsync(id);
         if (device == null) return null;
 
+        var oldStatus = device.Status;
+
         if (!string.IsNullOrWhiteSpace(dto.Name))
             device.Name = dto.Name;
         if (!string.IsNullOrWhiteSpace(dto.Category))
@@ -136,6 +140,29 @@ public class DeviceService : IDeviceService
 
         device.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+
+        if (dto.Status.HasValue && oldStatus != dto.Status.Value)
+        {
+            var adminUserIds = await _context.Users
+                .Where(u => u.Role == UserRole.Admin && u.IsActive)
+                .Select(u => u.Id)
+                .ToListAsync();
+
+            if (adminUserIds.Count > 0)
+            {
+                var priority = dto.Status.Value == DeviceStatus.Fault ? NotificationPriority.High : NotificationPriority.Medium;
+                _ = _notificationService.BatchEnqueueAsync(new BatchCreateNotificationDto
+                {
+                    UserIds = adminUserIds,
+                    Title = $"设备状态变更: {device.DeviceCode}",
+                    Content = $"设备 {device.Name}（{device.DeviceCode}）状态已从 {oldStatus} 变更为 {dto.Status.Value}，请关注。",
+                    Type = NotificationType.DeviceStatusChanged,
+                    Priority = priority,
+                    RelatedEntityType = RelatedEntityType.Device,
+                    RelatedEntityId = device.Id
+                });
+            }
+        }
 
         return _mapper.Map<DeviceDto>(device);
     }

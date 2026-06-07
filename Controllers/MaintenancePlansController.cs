@@ -125,4 +125,12 @@ public class MaintenancePlansController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPost("send-reminders")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<int>> SendReminders([FromQuery] int daysAhead = 3)
+    {
+        var count = await _maintenancePlanService.SendUpcomingRemindersAsync(daysAhead);
+        return Ok(new { sentCount = count, message = $"已发送 {count} 条保养提醒通知" });
+    }
 }
