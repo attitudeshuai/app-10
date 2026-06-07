@@ -127,3 +127,14 @@ public interface INotificationQueue
     Task<List<Notification>> DequeueBatchAsync(int batchSize, CancellationToken stoppingToken);
     int GetQueueCount();
 }
+
+public interface ISupplierService
+{
+    Task<PagedResult<SupplierDto>> GetPagedAsync(SupplierQueryDto query);
+    Task<SupplierDetailDto?> GetByIdAsync(int id);
+    Task<SupplierDto> CreateAsync(CreateSupplierDto dto);
+    Task<SupplierDto?> UpdateAsync(int id, UpdateSupplierDto dto);
+    Task<bool> DeleteAsync(int id);
+    Task<SupplierStatisticsDto> GetStatisticsAsync();
+    Task<List<SupplierDto>> GetAllAsync();
+}

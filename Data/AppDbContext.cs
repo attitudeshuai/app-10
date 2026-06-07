@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<InspectionRecord> InspectionRecords { get; set; }
     public DbSet<InspectionPhoto> InspectionPhotos { get; set; }
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<Supplier> Suppliers { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -235,5 +236,19 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(n => n.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Supplier>()
+            .HasIndex(s => s.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<Supplier>()
+            .Property(s => s.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<Device>()
+            .HasOne(d => d.Supplier)
+            .WithMany(s => s.Devices)
+            .HasForeignKey(d => d.SupplierId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

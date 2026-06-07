@@ -21,7 +21,9 @@ public class DeviceService : IDeviceService
 
     public async Task<PagedResult<DeviceDto>> GetPagedAsync(DeviceQueryDto query)
     {
-        var queryable = _context.Devices.AsQueryable();
+        var queryable = _context.Devices
+            .Include(d => d.Supplier)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.SearchKeyword))
         {
@@ -42,6 +44,11 @@ public class DeviceService : IDeviceService
         if (!string.IsNullOrWhiteSpace(query.Category))
         {
             queryable = queryable.Where(d => d.Category == query.Category);
+        }
+
+        if (query.SupplierId.HasValue)
+        {
+            queryable = queryable.Where(d => d.SupplierId == query.SupplierId.Value);
         }
 
         var totalCount = await queryable.CountAsync();
@@ -76,6 +83,7 @@ public class DeviceService : IDeviceService
     public async Task<DeviceDetailDto?> GetByIdAsync(int id)
     {
         var device = await _context.Devices
+            .Include(d => d.Supplier)
             .Include(d => d.InspectionRecords)
                 .ThenInclude(r => r.Photos)
             .Include(d => d.InspectionRecords)
@@ -102,6 +110,15 @@ public class DeviceService : IDeviceService
             throw new InvalidOperationException("设备编号已存在");
         }
 
+        if (dto.SupplierId.HasValue)
+        {
+            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value);
+            if (!supplierExists)
+            {
+                throw new InvalidOperationException("供应商不存在");
+            }
+        }
+
         var device = _mapper.Map<Device>(dto);
         device.CreatedAt = DateTime.UtcNow;
         device.UpdatedAt = DateTime.UtcNow;
@@ -109,7 +126,11 @@ public class DeviceService : IDeviceService
         _context.Devices.Add(device);
         await _context.SaveChangesAsync();
 
-        return _mapper.Map<DeviceDto>(device);
+        var result = await _context.Devices
+            .Include(d => d.Supplier)
+            .FirstOrDefaultAsync(d => d.Id == device.Id);
+
+        return _mapper.Map<DeviceDto>(result);
     }
 
     public async Task<DeviceDto?> UpdateAsync(int id, UpdateDeviceDto dto)
@@ -134,6 +155,16 @@ public class DeviceService : IDeviceService
         if (dto.Description != null)
             device.Description = dto.Description;
 
+        if (dto.SupplierId.HasValue)
+        {
+            var supplierExists = await _context.Suppliers.AnyAsync(s => s.Id == dto.SupplierId.Value);
+            if (!supplierExists)
+            {
+                throw new InvalidOperationException("供应商不存在");
+            }
+            device.SupplierId = dto.SupplierId.Value;
+        }
+
         device.UpdatedAt = DateTime.UtcNow;
 
         if (dto.Status.HasValue && dto.Status.Value != device.Status)
@@ -145,12 +176,18 @@ public class DeviceService : IDeviceService
             await _context.SaveChangesAsync();
         }
 
-        return _mapper.Map<DeviceDto>(device);
+        var result = await _context.Devices
+            .Include(d => d.Supplier)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        return _mapper.Map<DeviceDto>(result);
     }
 
     public async Task<DeviceDto?> UpdateStatusAsync(int id, DeviceStatus newStatus)
     {
-        var device = await _context.Devices.FindAsync(id);
+        var device = await _context.Devices
+            .Include(d => d.Supplier)
+            .FirstOrDefaultAsync(d => d.Id == id);
         if (device == null) return null;
 
         if (device.Status == newStatus)
@@ -159,7 +196,12 @@ public class DeviceService : IDeviceService
         }
 
         await UpdateStatusCoreAsync(device, newStatus);
-        return _mapper.Map<DeviceDto>(device);
+
+        var result = await _context.Devices
+            .Include(d => d.Supplier)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        return _mapper.Map<DeviceDto>(result);
     }
 
     private async Task UpdateStatusCoreAsync(Device device, DeviceStatus newStatus)

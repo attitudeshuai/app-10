@@ -11,9 +11,6 @@ public class MappingProfile : Profile
         CreateMap<User, UserDto>();
         CreateMap<CreateUserDto, User>();
 
-        CreateMap<Device, DeviceDto>();
-        CreateMap<CreateDeviceDto, Device>();
-
         CreateMap<MaintenancePlan, MaintenancePlanDto>()
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
             .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
@@ -37,10 +34,11 @@ public class MappingProfile : Profile
             .ForMember(d => d.SparePartSpecification, opt => opt.MapFrom(s => s.SparePart != null ? s.SparePart.Specification : null))
             .ForMember(d => d.FaultReportCode, opt => opt.MapFrom(s => s.FaultReport != null ? s.FaultReport.ReportCode : null));
 
-        CreateMap<Device, DeviceDto>();
         CreateMap<Device, DeviceDetailDto>()
             .ForMember(d => d.RecentInspectionRecords, opt => opt.Ignore())
             .ForMember(d => d.InspectionRecordCount, opt => opt.Ignore());
+
+        CreateMap<CreateDeviceDto, Device>();
 
         CreateMap<InspectionPlan, InspectionPlanDto>()
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
@@ -70,5 +68,18 @@ public class MappingProfile : Profile
         CreateMap<Notification, NotificationDto>()
             .ForMember(d => d.UserName, opt => opt.MapFrom(s => s.User != null ? s.User.RealName : null));
         CreateMap<CreateNotificationDto, Notification>();
+
+        CreateMap<Supplier, SupplierDto>()
+            .ForMember(d => d.DeviceCount, opt => opt.Ignore());
+        CreateMap<Supplier, SupplierDetailDto>()
+            .ForMember(d => d.DeviceCount, opt => opt.Ignore())
+            .ForMember(d => d.Devices, opt => opt.Ignore());
+        CreateMap<CreateSupplierDto, Supplier>();
+
+        CreateMap<Device, SupplierDeviceDto>();
+
+        CreateMap<Device, DeviceDto>()
+            .ForMember(d => d.SupplierId, opt => opt.MapFrom(s => s.SupplierId))
+            .ForMember(d => d.SupplierName, opt => opt.MapFrom(s => s.Supplier != null ? s.Supplier.Name : null));
     }
 }

@@ -15,6 +15,8 @@ public class DeviceDto
     public string Location { get; set; } = string.Empty;
     public DeviceStatus Status { get; set; }
     public string? Description { get; set; }
+    public int? SupplierId { get; set; }
+    public string? SupplierName { get; set; }
     public DateTime CreatedAt { get; set; }
 }
 
@@ -36,6 +38,7 @@ public class CreateDeviceDto
     public string Location { get; set; } = string.Empty;
     public DeviceStatus Status { get; set; } = DeviceStatus.Running;
     public string? Description { get; set; }
+    public int? SupplierId { get; set; }
 }
 
 public class UpdateDeviceDto
@@ -49,12 +52,14 @@ public class UpdateDeviceDto
     public string Location { get; set; } = string.Empty;
     public DeviceStatus? Status { get; set; }
     public string? Description { get; set; }
+    public int? SupplierId { get; set; }
 }
 
 public class DeviceQueryDto : PagedQuery
 {
     public DeviceStatus? Status { get; set; }
     public string? Category { get; set; }
+    public int? SupplierId { get; set; }
 }
 
 public class DeviceStatisticsDto
