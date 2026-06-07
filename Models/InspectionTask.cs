@@ -5,7 +5,8 @@ public enum InspectionTaskStatus
     Pending = 0,
     InProgress = 1,
     Completed = 2,
-    Cancelled = 3
+    Cancelled = 3,
+    Overdue = 4
 }
 
 public class InspectionTask

@@ -3,6 +3,7 @@ using DeviceMaintenanceSystem.Data;
 using DeviceMaintenanceSystem.Dtos;
 using DeviceMaintenanceSystem.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace DeviceMaintenanceSystem.Services;
 
@@ -10,11 +11,19 @@ public class InspectionTaskService : IInspectionTaskService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
+    private readonly ILogger<InspectionTaskService> _logger;
 
-    public InspectionTaskService(AppDbContext context, IMapper mapper)
+    public InspectionTaskService(
+        AppDbContext context,
+        IMapper mapper,
+        INotificationService notificationService,
+        ILogger<InspectionTaskService> logger)
     {
         _context = context;
         _mapper = mapper;
+        _notificationService = notificationService;
+        _logger = logger;
     }
 
     public async Task<PagedResult<InspectionTaskDto>> GetPagedAsync(InspectionTaskQueryDto query)
@@ -148,5 +157,76 @@ public class InspectionTaskService : IInspectionTaskService
             .ToListAsync();
 
         return _mapper.Map<List<InspectionTaskDto>>(tasks);
+    }
+
+    public async Task<int> MarkOverdueTasksAsync()
+    {
+        var now = DateTime.UtcNow;
+
+        var overdueTasks = await _context.InspectionTasks
+            .Include(t => t.Device)
+            .Include(t => t.AssignedTechnician)
+            .Where(t =>
+                t.ScheduledDate < now &&
+                (t.Status == InspectionTaskStatus.Pending || t.Status == InspectionTaskStatus.InProgress))
+            .ToListAsync();
+
+        if (overdueTasks.Count == 0)
+            return 0;
+
+        var adminIds = await _context.Users
+            .Where(u => u.Role == UserRole.Admin && u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        var nowTime = DateTime.UtcNow;
+        foreach (var task in overdueTasks)
+        {
+            task.Status = InspectionTaskStatus.Overdue;
+            task.UpdatedAt = nowTime;
+        }
+
+        await _context.SaveChangesAsync();
+
+        foreach (var task in overdueTasks)
+        {
+            try
+            {
+                var userIds = new List<int>();
+
+                if (task.AssignedTechnicianId.HasValue && task.AssignedTechnician?.IsActive == true)
+                {
+                    userIds.Add(task.AssignedTechnicianId.Value);
+                }
+
+                userIds.AddRange(adminIds);
+                userIds = userIds.Distinct().ToList();
+
+                if (userIds.Count == 0)
+                    continue;
+
+                var title = $"巡检任务逾期提醒";
+                var content = $"巡检任务【{task.TaskCode}】已逾期，请及时处理。设备：{task.Device?.Name ?? "未知"}，计划时间：{task.ScheduledDate:yyyy-MM-dd HH:mm}";
+
+                var batchDto = new BatchCreateNotificationDto
+                {
+                    UserIds = userIds,
+                    Title = title,
+                    Content = content,
+                    Type = NotificationType.InspectionTaskOverdue,
+                    Priority = NotificationPriority.High,
+                    RelatedEntityType = RelatedEntityType.InspectionTask,
+                    RelatedEntityId = task.Id
+                };
+
+                await _notificationService.BatchEnqueueAsync(batchDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "发送逾期巡检任务通知失败，任务ID: {TaskId}", task.Id);
+            }
+        }
+
+        return overdueTasks.Count;
     }
 }

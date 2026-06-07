@@ -108,6 +108,7 @@ public interface IInspectionTaskService
     Task<InspectionTaskDto?> CompleteAsync(int id);
     Task<InspectionTaskDto?> CancelAsync(int id);
     Task<List<InspectionTaskDto>> GetPlanTasksAsync(int planId);
+    Task<int> MarkOverdueTasksAsync();
 }
 
 public interface IInspectionRecordService

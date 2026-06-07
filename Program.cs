@@ -98,6 +98,7 @@ builder.Services.AddHostedService<NotificationBackgroundService>();
 builder.Services.AddHostedService<MaintenanceReminderBackgroundService>();
 builder.Services.AddHostedService<MaintenanceScheduleBackgroundService>();
 builder.Services.AddHostedService<ContractReminderBackgroundService>();
+builder.Services.AddHostedService<InspectionTaskOverdueBackgroundService>();
 
 builder.Services.AddCors(options =>
 {

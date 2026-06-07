@@ -12,7 +12,8 @@ public enum NotificationType
     InspectionTaskAssigned = 7,
     SystemNotice = 8,
     ContractExpiringSoon = 9,
-    ContractExpired = 10
+    ContractExpired = 10,
+    InspectionTaskOverdue = 11
 }
 
 public enum NotificationPriority
