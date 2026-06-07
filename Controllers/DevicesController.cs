@@ -79,4 +79,25 @@ public class DevicesController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPost("import")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<DeviceImportResultDto>> ImportFromCsv(IFormFile file)
+    {
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new { message = "请上传文件" });
+        }
+
+        var allowedExtensions = new[] { ".csv" };
+        var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!allowedExtensions.Contains(fileExtension))
+        {
+            return BadRequest(new { message = "仅支持 CSV 格式文件" });
+        }
+
+        using var stream = file.OpenReadStream();
+        var result = await _deviceService.ImportFromCsvAsync(stream);
+        return Ok(result);
+    }
 }

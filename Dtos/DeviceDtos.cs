@@ -83,6 +83,21 @@ public class CategoryStatDto
     public int Count { get; set; }
 }
 
+public class DeviceImportResultDto
+{
+    public int TotalCount { get; set; }
+    public int SuccessCount { get; set; }
+    public int FailedCount { get; set; }
+    public List<DeviceImportErrorDto> Errors { get; set; } = new();
+}
+
+public class DeviceImportErrorDto
+{
+    public int RowNumber { get; set; }
+    public string? DeviceCode { get; set; }
+    public string ErrorMessage { get; set; } = string.Empty;
+}
+
 public class DeviceBorrowRecordDto
 {
     public int Id { get; set; }

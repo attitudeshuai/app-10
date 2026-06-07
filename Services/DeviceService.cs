@@ -312,4 +312,369 @@ public class DeviceService : IDeviceService
             ByCategory = byCategory
         };
     }
+
+    public async Task<DeviceImportResultDto> ImportFromCsvAsync(Stream csvStream)
+    {
+        var result = new DeviceImportResultDto();
+        var errors = new List<DeviceImportErrorDto>();
+        var validDevices = new List<Device>();
+        var deviceCodesInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rowNumber = 0;
+
+        using var reader = new StreamReader(csvStream);
+        var headerLine = await reader.ReadLineAsync();
+        if (headerLine == null)
+        {
+            errors.Add(new DeviceImportErrorDto { RowNumber = 0, ErrorMessage = "CSV 文件为空或无法读取" });
+            result.Errors = errors;
+            return result;
+        }
+
+        var headers = ParseCsvLine(headerLine)
+            .Select(h => h.Trim())
+            .ToList();
+
+        var deviceCodeIndex = FindColumnIndex(headers, "DeviceCode", "设备编号");
+        var nameIndex = FindColumnIndex(headers, "Name", "设备名称");
+        var categoryIndex = FindColumnIndex(headers, "Category", "类别", "设备类别");
+        var modelIndex = FindColumnIndex(headers, "Model", "型号");
+        var manufacturerIndex = FindColumnIndex(headers, "Manufacturer", "制造商");
+        var purchaseDateIndex = FindColumnIndex(headers, "PurchaseDate", "采购日期");
+        var purchasePriceIndex = FindColumnIndex(headers, "PurchasePrice", "采购价格");
+        var locationIndex = FindColumnIndex(headers, "Location", "位置", "存放位置");
+        var statusIndex = FindColumnIndex(headers, "Status", "状态", "设备状态");
+        var descriptionIndex = FindColumnIndex(headers, "Description", "描述", "备注");
+        var supplierIdIndex = FindColumnIndex(headers, "SupplierId", "供应商ID", "供应商编号");
+
+        if (deviceCodeIndex < 0 || nameIndex < 0)
+        {
+            errors.Add(new DeviceImportErrorDto
+            {
+                RowNumber = 1,
+                ErrorMessage = "CSV 表头缺少必要字段：设备编号(DeviceCode) 和 设备名称(Name) 为必填"
+            });
+            result.Errors = errors;
+            return result;
+        }
+
+        string? line;
+        while ((line = await reader.ReadLineAsync()) != null)
+        {
+            rowNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            var fields = ParseCsvLine(line);
+            if (fields.Count < headers.Count)
+            {
+                errors.Add(new DeviceImportErrorDto
+                {
+                    RowNumber = rowNumber + 1,
+                    ErrorMessage = $"列数不足，期望 {headers.Count} 列，实际 {fields.Count} 列"
+                });
+                continue;
+            }
+
+            var deviceCode = GetFieldValue(fields, deviceCodeIndex)?.Trim() ?? string.Empty;
+            var name = GetFieldValue(fields, nameIndex)?.Trim() ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(deviceCode))
+            {
+                errors.Add(new DeviceImportErrorDto
+                {
+                    RowNumber = rowNumber + 1,
+                    DeviceCode = deviceCode,
+                    ErrorMessage = "设备编号不能为空"
+                });
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                errors.Add(new DeviceImportErrorDto
+                {
+                    RowNumber = rowNumber + 1,
+                    DeviceCode = deviceCode,
+                    ErrorMessage = "设备名称不能为空"
+                });
+                continue;
+            }
+
+            if (deviceCodesInFile.Contains(deviceCode))
+            {
+                errors.Add(new DeviceImportErrorDto
+                {
+                    RowNumber = rowNumber + 1,
+                    DeviceCode = deviceCode,
+                    ErrorMessage = "文件内存在重复的设备编号"
+                });
+                continue;
+            }
+
+            deviceCodesInFile.Add(deviceCode);
+
+            var device = new Device
+            {
+                DeviceCode = deviceCode,
+                Name = name,
+                Category = GetFieldValue(fields, categoryIndex)?.Trim() ?? string.Empty,
+                Model = GetFieldValue(fields, modelIndex)?.Trim() ?? string.Empty,
+                Manufacturer = GetFieldValue(fields, manufacturerIndex)?.Trim() ?? string.Empty,
+                Location = GetFieldValue(fields, locationIndex)?.Trim() ?? string.Empty,
+                Description = GetFieldValue(fields, descriptionIndex)?.Trim()
+            };
+
+            var purchaseDateStr = GetFieldValue(fields, purchaseDateIndex)?.Trim();
+            if (!string.IsNullOrWhiteSpace(purchaseDateStr))
+            {
+                if (DateTime.TryParse(purchaseDateStr, out var purchaseDate))
+                {
+                    device.PurchaseDate = DateTime.SpecifyKind(purchaseDate, DateTimeKind.Utc);
+                }
+                else
+                {
+                    errors.Add(new DeviceImportErrorDto
+                    {
+                        RowNumber = rowNumber + 1,
+                        DeviceCode = deviceCode,
+                        ErrorMessage = $"采购日期格式不正确：{purchaseDateStr}"
+                    });
+                    continue;
+                }
+            }
+
+            var purchasePriceStr = GetFieldValue(fields, purchasePriceIndex)?.Trim();
+            if (!string.IsNullOrWhiteSpace(purchasePriceStr))
+            {
+                if (decimal.TryParse(purchasePriceStr, out var purchasePrice))
+                {
+                    device.PurchasePrice = purchasePrice;
+                }
+                else
+                {
+                    errors.Add(new DeviceImportErrorDto
+                    {
+                        RowNumber = rowNumber + 1,
+                        DeviceCode = deviceCode,
+                        ErrorMessage = $"采购价格格式不正确：{purchasePriceStr}"
+                    });
+                    continue;
+                }
+            }
+
+            var statusStr = GetFieldValue(fields, statusIndex)?.Trim();
+            if (!string.IsNullOrWhiteSpace(statusStr))
+            {
+                if (Enum.TryParse<DeviceStatus>(statusStr, true, out var status))
+                {
+                    device.Status = status;
+                }
+                else
+                {
+                    errors.Add(new DeviceImportErrorDto
+                    {
+                        RowNumber = rowNumber + 1,
+                        DeviceCode = deviceCode,
+                        ErrorMessage = $"设备状态格式不正确：{statusStr}，有效值为 Running/Standby/Maintenance/Fault/Scrapped/Borrowed"
+                    });
+                    continue;
+                }
+            }
+            else
+            {
+                device.Status = DeviceStatus.Running;
+            }
+
+            var supplierIdStr = GetFieldValue(fields, supplierIdIndex)?.Trim();
+            if (!string.IsNullOrWhiteSpace(supplierIdStr))
+            {
+                if (int.TryParse(supplierIdStr, out var supplierId))
+                {
+                    device.SupplierId = supplierId;
+                }
+                else
+                {
+                    errors.Add(new DeviceImportErrorDto
+                    {
+                        RowNumber = rowNumber + 1,
+                        DeviceCode = deviceCode,
+                        ErrorMessage = $"供应商ID格式不正确：{supplierIdStr}"
+                    });
+                    continue;
+                }
+            }
+
+            validDevices.Add(device);
+        }
+
+        result.TotalCount = rowNumber;
+        result.FailedCount = errors.Count;
+
+        if (validDevices.Count == 0)
+        {
+            result.Errors = errors;
+            return result;
+        }
+
+        var deviceCodes = validDevices.Select(d => d.DeviceCode).ToList();
+        var existingCodes = await _context.Devices
+            .Where(d => deviceCodes.Contains(d.DeviceCode))
+            .Select(d => d.DeviceCode)
+            .ToListAsync();
+
+        var supplierIds = validDevices
+            .Where(d => d.SupplierId.HasValue)
+            .Select(d => d.SupplierId!.Value)
+            .Distinct()
+            .ToList();
+
+        var suppliers = await _context.Suppliers
+            .Where(s => supplierIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s);
+
+        var devicesToAdd = new List<Device>();
+        var now = DateTime.UtcNow;
+
+        foreach (var device in validDevices)
+        {
+            if (existingCodes.Contains(device.DeviceCode, StringComparer.OrdinalIgnoreCase))
+            {
+                errors.Add(new DeviceImportErrorDto
+                {
+                    RowNumber = 0,
+                    DeviceCode = device.DeviceCode,
+                    ErrorMessage = "设备编号已存在于系统中"
+                });
+                result.FailedCount++;
+                continue;
+            }
+
+            if (device.SupplierId.HasValue)
+            {
+                if (!suppliers.TryGetValue(device.SupplierId.Value, out var supplier))
+                {
+                    errors.Add(new DeviceImportErrorDto
+                    {
+                        RowNumber = 0,
+                        DeviceCode = device.DeviceCode,
+                        ErrorMessage = $"供应商不存在（ID: {device.SupplierId.Value}）"
+                    });
+                    result.FailedCount++;
+                    continue;
+                }
+
+                if (supplier.Status != CooperationStatus.Active)
+                {
+                    errors.Add(new DeviceImportErrorDto
+                    {
+                        RowNumber = 0,
+                        DeviceCode = device.DeviceCode,
+                        ErrorMessage = $"供应商（{supplier.Name}）当前非合作状态，无法关联新设备"
+                    });
+                    result.FailedCount++;
+                    continue;
+                }
+            }
+
+            device.CreatedAt = now;
+            device.UpdatedAt = now;
+            devicesToAdd.Add(device);
+        }
+
+        if (devicesToAdd.Count > 0)
+        {
+            _context.Devices.AddRange(devicesToAdd);
+            await _context.SaveChangesAsync();
+            result.SuccessCount = devicesToAdd.Count;
+        }
+
+        result.Errors = errors;
+
+        var adminUserIds = await _context.Users
+            .Where(u => u.Role == UserRole.Admin && u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        if (adminUserIds.Count > 0)
+        {
+            _ = _notificationService.BatchEnqueueAsync(new BatchCreateNotificationDto
+            {
+                UserIds = adminUserIds,
+                Title = "设备批量导入完成",
+                Content = $"本次设备批量导入已完成。共处理 {result.TotalCount} 条，成功 {result.SuccessCount} 条，失败 {result.FailedCount} 条。",
+                Type = NotificationType.SystemNotice,
+                Priority = NotificationPriority.Medium,
+                RelatedEntityType = RelatedEntityType.System
+            });
+        }
+
+        return result;
+    }
+
+    private static List<string> ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var current = string.Empty;
+        var inQuotes = false;
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            char c = line[i];
+
+            if (inQuotes)
+            {
+                if (c == '"' && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    current += '"';
+                    i++;
+                }
+                else if (c == '"')
+                {
+                    inQuotes = false;
+                }
+                else
+                {
+                    current += c;
+                }
+            }
+            else
+            {
+                if (c == '"')
+                {
+                    inQuotes = true;
+                }
+                else if (c == ',')
+                {
+                    result.Add(current);
+                    current = string.Empty;
+                }
+                else
+                {
+                    current += c;
+                }
+            }
+        }
+
+        result.Add(current);
+        return result;
+    }
+
+    private static int FindColumnIndex(List<string> headers, params string[] candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            var index = headers.FindIndex(h =>
+                string.Equals(h, candidate, StringComparison.OrdinalIgnoreCase));
+            if (index >= 0)
+                return index;
+        }
+        return -1;
+    }
+
+    private static string? GetFieldValue(List<string> fields, int index)
+    {
+        if (index < 0 || index >= fields.Count)
+            return null;
+        return fields[index];
+    }
 }

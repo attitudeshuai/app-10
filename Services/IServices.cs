@@ -30,6 +30,7 @@ public interface IDeviceService
     Task<bool> DeleteAsync(int id);
     Task<DeviceStatisticsDto> GetStatisticsAsync();
     Task<DeviceDto?> UpdateStatusAsync(int id, DeviceStatus newStatus);
+    Task<DeviceImportResultDto> ImportFromCsvAsync(Stream csvStream);
 }
 
 public interface IMaintenancePlanService
