@@ -10,7 +10,9 @@ public enum NotificationType
     MaintenanceCompleted = 5,
     DeviceStatusChanged = 6,
     InspectionTaskAssigned = 7,
-    SystemNotice = 8
+    SystemNotice = 8,
+    ContractExpiringSoon = 9,
+    ContractExpired = 10
 }
 
 public enum NotificationPriority
@@ -28,7 +30,8 @@ public enum RelatedEntityType
     Device = 2,
     InspectionTask = 3,
     InspectionPlan = 4,
-    System = 5
+    System = 5,
+    MaintenanceContract = 6
 }
 
 public enum NotificationStatus

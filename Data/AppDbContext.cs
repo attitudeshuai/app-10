@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<InspectionPhoto> InspectionPhotos { get; set; }
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<Supplier> Suppliers { get; set; }
+    public DbSet<MaintenanceContract> MaintenanceContracts { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -250,5 +251,27 @@ public class AppDbContext : DbContext
             .WithMany(s => s.Devices)
             .HasForeignKey(d => d.SupplierId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<MaintenanceContract>()
+            .HasIndex(c => c.ContractCode)
+            .IsUnique();
+
+        modelBuilder.Entity<MaintenanceContract>()
+            .HasOne(c => c.Device)
+            .WithMany(d => d.MaintenanceContracts)
+            .HasForeignKey(c => c.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MaintenanceContract>()
+            .HasOne(c => c.Supplier)
+            .WithMany()
+            .HasForeignKey(c => c.SupplierId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<MaintenanceContract>()
+            .HasIndex(c => c.EndDate);
+
+        modelBuilder.Entity<MaintenanceContract>()
+            .HasIndex(c => new { c.DeviceId, c.EndDate });
     }
 }

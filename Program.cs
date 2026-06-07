@@ -88,10 +88,12 @@ builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IInspectionPlanService, InspectionPlanService>();
 builder.Services.AddScoped<IInspectionTaskService, InspectionTaskService>();
 builder.Services.AddScoped<IInspectionRecordService, InspectionRecordService>();
+builder.Services.AddScoped<IMaintenanceContractService, MaintenanceContractService>();
 builder.Services.AddSingleton<INotificationQueue, NotificationQueue>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHostedService<NotificationBackgroundService>();
 builder.Services.AddHostedService<MaintenanceReminderBackgroundService>();
+builder.Services.AddHostedService<ContractReminderBackgroundService>();
 
 builder.Services.AddCors(options =>
 {

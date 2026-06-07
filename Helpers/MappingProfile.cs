@@ -81,5 +81,19 @@ public class MappingProfile : Profile
         CreateMap<Device, DeviceDto>()
             .ForMember(d => d.SupplierId, opt => opt.MapFrom(s => s.SupplierId))
             .ForMember(d => d.SupplierName, opt => opt.MapFrom(s => s.Supplier != null ? s.Supplier.Name : null));
+
+        CreateMap<MaintenanceContract, MaintenanceContractDto>()
+            .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
+            .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
+            .ForMember(d => d.SupplierName, opt => opt.MapFrom(s => s.Supplier != null ? s.Supplier.Name : null))
+            .ForMember(d => d.Status, opt => opt.Ignore());
+
+        CreateMap<MaintenanceContract, MaintenanceContractDetailDto>()
+            .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
+            .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
+            .ForMember(d => d.SupplierName, opt => opt.MapFrom(s => s.Supplier != null ? s.Supplier.Name : null))
+            .ForMember(d => d.Status, opt => opt.Ignore());
+
+        CreateMap<CreateMaintenanceContractDto, MaintenanceContract>();
     }
 }

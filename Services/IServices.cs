@@ -138,3 +138,15 @@ public interface ISupplierService
     Task<SupplierStatisticsDto> GetStatisticsAsync();
     Task<List<SupplierDto>> GetAllAsync();
 }
+
+public interface IMaintenanceContractService
+{
+    Task<PagedResult<MaintenanceContractDto>> GetPagedAsync(MaintenanceContractQueryDto query);
+    Task<MaintenanceContractDetailDto?> GetByIdAsync(int id);
+    Task<MaintenanceContractDto> CreateAsync(CreateMaintenanceContractDto dto);
+    Task<MaintenanceContractDto?> UpdateAsync(int id, UpdateMaintenanceContractDto dto);
+    Task<bool> DeleteAsync(int id);
+    Task<MaintenanceContractStatisticsDto> GetStatisticsAsync();
+    Task<List<MaintenanceContractDto>> GetDeviceContractsAsync(int deviceId);
+    Task<int> SendExpiringRemindersAsync(int daysAhead = 30);
+}
