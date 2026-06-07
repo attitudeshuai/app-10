@@ -20,4 +20,5 @@ public class Supplier
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public ICollection<Device> Devices { get; set; } = new List<Device>();
+    public ICollection<SupplierRating> Ratings { get; set; } = new List<SupplierRating>();
 }

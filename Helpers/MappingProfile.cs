@@ -81,11 +81,23 @@ public class MappingProfile : Profile
         CreateMap<CreateNotificationDto, Notification>();
 
         CreateMap<Supplier, SupplierDto>()
-            .ForMember(d => d.DeviceCount, opt => opt.Ignore());
+            .ForMember(d => d.DeviceCount, opt => opt.Ignore())
+            .ForMember(d => d.AverageRating, opt => opt.Ignore())
+            .ForMember(d => d.RatingCount, opt => opt.Ignore());
         CreateMap<Supplier, SupplierDetailDto>()
             .ForMember(d => d.DeviceCount, opt => opt.Ignore())
-            .ForMember(d => d.Devices, opt => opt.Ignore());
+            .ForMember(d => d.Devices, opt => opt.Ignore())
+            .ForMember(d => d.RecentRatings, opt => opt.Ignore())
+            .ForMember(d => d.AverageRating, opt => opt.Ignore())
+            .ForMember(d => d.RatingCount, opt => opt.Ignore());
         CreateMap<CreateSupplierDto, Supplier>();
+
+        CreateMap<SupplierRating, SupplierRatingDto>()
+            .ForMember(d => d.SupplierName, opt => opt.MapFrom(s => s.Supplier != null ? s.Supplier.Name : string.Empty))
+            .ForMember(d => d.RaterName, opt => opt.MapFrom(s => s.Rater != null ? s.Rater.RealName : string.Empty))
+            .ForMember(d => d.MaintenancePlanTitle, opt => opt.MapFrom(s => s.MaintenancePlan != null ? s.MaintenancePlan.Title : null))
+            .ForMember(d => d.FaultReportTitle, opt => opt.MapFrom(s => s.FaultReport != null ? s.FaultReport.Title : null));
+        CreateMap<CreateSupplierRatingDto, SupplierRating>();
 
         CreateMap<Device, SupplierDeviceDto>();
 

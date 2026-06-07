@@ -86,6 +86,7 @@ builder.Services.AddScoped<IMaintenanceScheduleService, MaintenanceScheduleServi
 builder.Services.AddScoped<IFaultReportService, FaultReportService>();
 builder.Services.AddScoped<ISparePartService, SparePartService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<ISupplierRatingService, SupplierRatingService>();
 builder.Services.AddScoped<IInspectionPlanService, InspectionPlanService>();
 builder.Services.AddScoped<IInspectionTaskService, InspectionTaskService>();
 builder.Services.AddScoped<IInspectionRecordService, InspectionRecordService>();

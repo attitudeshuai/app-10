@@ -10,11 +10,13 @@ public class SupplierService : ISupplierService
 {
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
+    private readonly ISupplierRatingService _ratingService;
 
-    public SupplierService(AppDbContext context, IMapper mapper)
+    public SupplierService(AppDbContext context, IMapper mapper, ISupplierRatingService ratingService)
     {
         _context = context;
         _mapper = mapper;
+        _ratingService = ratingService;
     }
 
     public async Task<PagedResult<SupplierDto>> GetPagedAsync(SupplierQueryDto query)
@@ -53,13 +55,21 @@ public class SupplierService : ISupplierService
         var items = await queryable
             .Skip((query.Page - 1) * query.PageSize)
             .Take(query.PageSize)
-            .Select(s => new { Supplier = s, DeviceCount = s.Devices.Count })
+            .Select(s => new
+            {
+                Supplier = s,
+                DeviceCount = s.Devices.Count,
+                RatingCount = s.Ratings.Count,
+                AverageRating = s.Ratings.Count > 0 ? Math.Round((double)s.Ratings.Average(r => r.Score), 2) : 0
+            })
             .ToListAsync();
 
         var dtos = items.Select(x =>
         {
             var dto = _mapper.Map<SupplierDto>(x.Supplier);
             dto.DeviceCount = x.DeviceCount;
+            dto.RatingCount = x.RatingCount;
+            dto.AverageRating = x.AverageRating;
             return dto;
         }).ToList();
 
@@ -77,13 +87,21 @@ public class SupplierService : ISupplierService
     {
         var items = await _context.Suppliers
             .OrderBy(s => s.Name)
-            .Select(s => new { Supplier = s, DeviceCount = s.Devices.Count })
+            .Select(s => new
+            {
+                Supplier = s,
+                DeviceCount = s.Devices.Count,
+                RatingCount = s.Ratings.Count,
+                AverageRating = s.Ratings.Count > 0 ? Math.Round((double)s.Ratings.Average(r => r.Score), 2) : 0
+            })
             .ToListAsync();
 
         var dtos = items.Select(x =>
         {
             var dto = _mapper.Map<SupplierDto>(x.Supplier);
             dto.DeviceCount = x.DeviceCount;
+            dto.RatingCount = x.RatingCount;
+            dto.AverageRating = x.AverageRating;
             return dto;
         }).ToList();
 
@@ -104,6 +122,13 @@ public class SupplierService : ISupplierService
             .Select(d => _mapper.Map<SupplierDeviceDto>(d))
             .OrderBy(d => d.DeviceCode)
             .ToList();
+
+        var ratingSummary = await _ratingService.GetSummaryAsync(id);
+        detail.AverageRating = ratingSummary.AverageRating;
+        detail.RatingCount = ratingSummary.RatingCount;
+
+        var recentRatings = await _ratingService.GetSupplierRatingsAsync(id, 10);
+        detail.RecentRatings = recentRatings;
 
         return detail;
     }
@@ -144,6 +169,8 @@ public class SupplierService : ISupplierService
 
         var result = _mapper.Map<SupplierDto>(supplier);
         result.DeviceCount = 0;
+        result.RatingCount = 0;
+        result.AverageRating = 0;
         return result;
     }
 
@@ -197,8 +224,15 @@ public class SupplierService : ISupplierService
         await _context.SaveChangesAsync();
 
         var deviceCount = await _context.Devices.CountAsync(d => d.SupplierId == id);
+        var ratingCount = await _context.SupplierRatings.CountAsync(r => r.SupplierId == id);
+        var averageRating = ratingCount > 0
+            ? Math.Round((double)await _context.SupplierRatings.Where(r => r.SupplierId == id).AverageAsync(r => r.Score), 2)
+            : 0;
+
         var result = _mapper.Map<SupplierDto>(supplier);
         result.DeviceCount = deviceCount;
+        result.RatingCount = ratingCount;
+        result.AverageRating = averageRating;
         return result;
     }
 

@@ -156,6 +156,16 @@ public interface ISupplierService
     Task<List<SupplierDto>> GetAllAsync();
 }
 
+public interface ISupplierRatingService
+{
+    Task<PagedResult<SupplierRatingDto>> GetPagedAsync(SupplierRatingQueryDto query);
+    Task<SupplierRatingDto?> GetByIdAsync(int id);
+    Task<SupplierRatingDto> CreateAsync(CreateSupplierRatingDto dto, int raterId);
+    Task<bool> DeleteAsync(int id, int userId);
+    Task<SupplierRatingSummaryDto> GetSummaryAsync(int supplierId);
+    Task<List<SupplierRatingDto>> GetSupplierRatingsAsync(int supplierId, int limit = 10);
+}
+
 public interface IMaintenanceContractService
 {
     Task<PagedResult<MaintenanceContractDto>> GetPagedAsync(MaintenanceContractQueryDto query);

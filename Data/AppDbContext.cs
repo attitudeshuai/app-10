@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<KnowledgeBaseArticle> KnowledgeBaseArticles { get; set; }
     public DbSet<Tag> Tags { get; set; }
     public DbSet<KnowledgeBaseArticleTag> KnowledgeBaseArticleTags { get; set; }
+    public DbSet<SupplierRating> SupplierRatings { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -280,6 +281,40 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Supplier>()
             .Property(s => s.Status)
             .HasConversion<string>();
+
+        modelBuilder.Entity<SupplierRating>()
+            .Property(r => r.WorkType)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<SupplierRating>()
+            .HasOne(r => r.Supplier)
+            .WithMany(s => s.Ratings)
+            .HasForeignKey(r => r.SupplierId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SupplierRating>()
+            .HasOne(r => r.Rater)
+            .WithMany()
+            .HasForeignKey(r => r.RaterId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SupplierRating>()
+            .HasOne(r => r.MaintenancePlan)
+            .WithMany()
+            .HasForeignKey(r => r.MaintenancePlanId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SupplierRating>()
+            .HasOne(r => r.FaultReport)
+            .WithMany()
+            .HasForeignKey(r => r.FaultReportId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SupplierRating>()
+            .HasIndex(r => r.SupplierId);
+
+        modelBuilder.Entity<SupplierRating>()
+            .HasIndex(r => r.CreatedAt);
 
         modelBuilder.Entity<Device>()
             .HasOne(d => d.Supplier)
