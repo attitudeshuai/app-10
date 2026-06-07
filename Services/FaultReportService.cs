@@ -221,12 +221,22 @@ public class FaultReportService : IFaultReportService
 
         if (dto.SparePartConsumptions != null && dto.SparePartConsumptions.Any())
         {
-            var sparePartIds = dto.SparePartConsumptions.Select(c => c.SparePartId).Distinct().ToList();
+            var mergedConsumptions = dto.SparePartConsumptions
+                .GroupBy(c => c.SparePartId)
+                .Select(g => new SparePartConsumptionItemDto
+                {
+                    SparePartId = g.Key,
+                    Quantity = g.Sum(c => c.Quantity),
+                    Remark = string.Join("; ", g.Select(c => c.Remark).Where(r => !string.IsNullOrWhiteSpace(r)))
+                })
+                .ToList();
+
+            var sparePartIds = mergedConsumptions.Select(c => c.SparePartId).Distinct().ToList();
             var spareParts = await _context.SpareParts
                 .Where(s => sparePartIds.Contains(s.Id))
                 .ToDictionaryAsync(s => s.Id);
 
-            foreach (var item in dto.SparePartConsumptions)
+            foreach (var item in mergedConsumptions)
             {
                 if (!spareParts.TryGetValue(item.SparePartId, out var sparePart))
                 {

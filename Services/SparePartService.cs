@@ -77,16 +77,29 @@ public class SparePartService : ISparePartService
 
     public async Task<SparePartDto> CreateAsync(CreateSparePartDto dto)
     {
+        if (string.IsNullOrWhiteSpace(dto.Name))
+        {
+            throw new InvalidOperationException("备件名称不能为空");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.Specification))
+        {
+            throw new InvalidOperationException("规格型号不能为空");
+        }
+
         var device = await _context.Devices.FindAsync(dto.DeviceId);
         if (device == null)
         {
             throw new KeyNotFoundException("设备不存在");
         }
 
+        var trimmedName = dto.Name.Trim();
+        var trimmedSpec = dto.Specification.Trim();
+
         if (await _context.SpareParts.AnyAsync(s =>
             s.DeviceId == dto.DeviceId &&
-            s.Name == dto.Name &&
-            s.Specification == dto.Specification))
+            s.Name == trimmedName &&
+            s.Specification == trimmedSpec))
         {
             throw new InvalidOperationException("该设备下已存在同名同规格的备件");
         }
@@ -102,6 +115,8 @@ public class SparePartService : ISparePartService
         }
 
         var sparePart = _mapper.Map<SparePart>(dto);
+        sparePart.Name = trimmedName;
+        sparePart.Specification = trimmedSpec;
         sparePart.CreatedAt = DateTime.UtcNow;
         sparePart.UpdatedAt = DateTime.UtcNow;
 
@@ -116,10 +131,22 @@ public class SparePartService : ISparePartService
         var sparePart = await _context.SpareParts.FindAsync(id);
         if (sparePart == null) return null;
 
-        if (!string.IsNullOrWhiteSpace(dto.Name))
-            sparePart.Name = dto.Name;
-        if (!string.IsNullOrWhiteSpace(dto.Specification))
-            sparePart.Specification = dto.Specification;
+        if (dto.Name != null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Name))
+            {
+                throw new InvalidOperationException("备件名称不能为空");
+            }
+            sparePart.Name = dto.Name.Trim();
+        }
+        if (dto.Specification != null)
+        {
+            if (string.IsNullOrWhiteSpace(dto.Specification))
+            {
+                throw new InvalidOperationException("规格型号不能为空");
+            }
+            sparePart.Specification = dto.Specification.Trim();
+        }
         if (dto.StockQuantity.HasValue)
         {
             if (dto.StockQuantity.Value < 0)
