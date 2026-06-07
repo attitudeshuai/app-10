@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<SparePart> SpareParts { get; set; }
     public DbSet<SparePartConsumption> SparePartConsumptions { get; set; }
     public DbSet<InspectionPlan> InspectionPlans { get; set; }
+    public DbSet<InspectionTask> InspectionTasks { get; set; }
     public DbSet<InspectionRecord> InspectionRecords { get; set; }
     public DbSet<InspectionPhoto> InspectionPhotos { get; set; }
 
@@ -135,6 +136,32 @@ public class AppDbContext : DbContext
             .HasForeignKey(p => p.AssignedTechnicianId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<InspectionTask>()
+            .HasIndex(t => t.TaskCode)
+            .IsUnique();
+
+        modelBuilder.Entity<InspectionTask>()
+            .Property(t => t.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<InspectionTask>()
+            .HasOne(t => t.InspectionPlan)
+            .WithMany(p => p.InspectionTasks)
+            .HasForeignKey(t => t.InspectionPlanId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<InspectionTask>()
+            .HasOne(t => t.Device)
+            .WithMany(d => d.InspectionTasks)
+            .HasForeignKey(t => t.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<InspectionTask>()
+            .HasOne(t => t.AssignedTechnician)
+            .WithMany()
+            .HasForeignKey(t => t.AssignedTechnicianId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<InspectionRecord>()
             .HasIndex(r => r.RecordCode)
             .IsUnique();
@@ -148,8 +175,14 @@ public class AppDbContext : DbContext
             .HasConversion<string>();
 
         modelBuilder.Entity<InspectionRecord>()
+            .HasOne(r => r.InspectionTask)
+            .WithMany(t => t.InspectionRecords)
+            .HasForeignKey(r => r.InspectionTaskId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<InspectionRecord>()
             .HasOne(r => r.InspectionPlan)
-            .WithMany(p => p.InspectionRecords)
+            .WithMany()
             .HasForeignKey(r => r.InspectionPlanId)
             .OnDelete(DeleteBehavior.SetNull);
 

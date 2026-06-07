@@ -11,6 +11,8 @@ public class InspectionRecord
 {
     public int Id { get; set; }
     public string RecordCode { get; set; } = string.Empty;
+    public int? InspectionTaskId { get; set; }
+    public InspectionTask? InspectionTask { get; set; }
     public int? InspectionPlanId { get; set; }
     public InspectionPlan? InspectionPlan { get; set; }
     public int DeviceId { get; set; }

@@ -2,8 +2,8 @@ namespace DeviceMaintenanceSystem.Models;
 
 public enum InspectionPlanStatus
 {
-    Pending = 0,
-    InProgress = 1,
+    Active = 0,
+    Paused = 1,
     Completed = 2,
     Cancelled = 3
 }
@@ -23,15 +23,16 @@ public class InspectionPlan
     public int DeviceId { get; set; }
     public Device? Device { get; set; }
     public InspectionCycle Cycle { get; set; }
-    public DateTime PlannedDate { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
     public int? AssignedTechnicianId { get; set; }
     public User? AssignedTechnician { get; set; }
     public string InspectionContent { get; set; } = string.Empty;
-    public InspectionPlanStatus Status { get; set; } = InspectionPlanStatus.Pending;
-    public DateTime? ActualInspectionDate { get; set; }
+    public InspectionPlanStatus Status { get; set; } = InspectionPlanStatus.Active;
+    public int GeneratedTaskCount { get; set; } = 0;
     public string? Remark { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
-    public ICollection<InspectionRecord> InspectionRecords { get; set; } = new List<InspectionRecord>();
+    public ICollection<InspectionTask> InspectionTasks { get; set; } = new List<InspectionTask>();
 }

@@ -30,6 +30,7 @@ public class InspectionRecordService : IInspectionRecordService
             .Include(r => r.Device)
             .Include(r => r.Inspector)
             .Include(r => r.InspectionPlan)
+            .Include(r => r.InspectionTask)
             .Include(r => r.Photos)
             .AsQueryable();
 
@@ -38,8 +39,8 @@ public class InspectionRecordService : IInspectionRecordService
             var keyword = query.SearchKeyword.ToLower();
             queryable = queryable.Where(r =>
                 r.RecordCode.ToLower().Contains(keyword) ||
-                r.AbnormalDescription != null && r.AbnormalDescription.ToLower().Contains(keyword) ||
-                r.Remark != null && r.Remark.ToLower().Contains(keyword));
+                (r.AbnormalDescription != null && r.AbnormalDescription.ToLower().Contains(keyword)) ||
+                (r.Remark != null && r.Remark.ToLower().Contains(keyword)));
         }
 
         if (query.DeviceId.HasValue)
@@ -68,6 +69,9 @@ public class InspectionRecordService : IInspectionRecordService
 
         if (query.InspectionPlanId.HasValue)
             queryable = queryable.Where(r => r.InspectionPlanId == query.InspectionPlanId.Value);
+
+        if (query.InspectionTaskId.HasValue)
+            queryable = queryable.Where(r => r.InspectionTaskId == query.InspectionTaskId.Value);
 
         var totalCount = await queryable.CountAsync();
 
@@ -103,6 +107,7 @@ public class InspectionRecordService : IInspectionRecordService
             .Include(r => r.Device)
             .Include(r => r.Inspector)
             .Include(r => r.InspectionPlan)
+            .Include(r => r.InspectionTask)
             .Include(r => r.Photos)
             .FirstOrDefaultAsync(r => r.Id == id);
         return record == null ? null : _mapper.Map<InspectionRecordDto>(record);
@@ -122,6 +127,20 @@ public class InspectionRecordService : IInspectionRecordService
             throw new KeyNotFoundException("巡检员不存在");
         }
 
+        InspectionTask? task = null;
+        if (dto.InspectionTaskId.HasValue)
+        {
+            task = await _context.InspectionTasks.FindAsync(dto.InspectionTaskId.Value);
+            if (task == null)
+            {
+                throw new KeyNotFoundException("巡检任务不存在");
+            }
+            if (task.Status == InspectionTaskStatus.Cancelled)
+            {
+                throw new InvalidOperationException("已取消的任务不能提交巡检记录");
+            }
+        }
+
         InspectionPlan? plan = null;
         if (dto.InspectionPlanId.HasValue)
         {
@@ -132,21 +151,28 @@ public class InspectionRecordService : IInspectionRecordService
             }
         }
 
+        if (task != null && plan == null)
+        {
+            plan = await _context.InspectionPlans.FindAsync(task.InspectionPlanId);
+        }
+
         var recordCode = $"IR{DateTime.UtcNow:yyyyMMddHHmmss}{new Random().Next(1000, 9999)}";
 
         var record = _mapper.Map<InspectionRecord>(dto);
         record.RecordCode = recordCode;
         record.InspectorId = inspectorId;
+        record.InspectionPlanId = plan?.Id ?? dto.InspectionPlanId;
+        record.InspectionTaskId = task?.Id ?? dto.InspectionTaskId;
         record.CreatedAt = DateTime.UtcNow;
         record.UpdatedAt = DateTime.UtcNow;
 
         _context.InspectionRecords.Add(record);
 
-        if (plan != null && plan.Status == InspectionPlanStatus.InProgress)
+        if (task != null && task.Status == InspectionTaskStatus.Pending)
         {
-            plan.Status = InspectionPlanStatus.Completed;
-            plan.ActualInspectionDate = dto.InspectionTime;
-            plan.UpdatedAt = DateTime.UtcNow;
+            task.Status = InspectionTaskStatus.InProgress;
+            task.ActualStartDate = dto.InspectionTime;
+            task.UpdatedAt = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync();
@@ -181,6 +207,7 @@ public class InspectionRecordService : IInspectionRecordService
             .Include(r => r.Device)
             .Include(r => r.Inspector)
             .Include(r => r.InspectionPlan)
+            .Include(r => r.InspectionTask)
             .Include(r => r.Photos)
             .Where(r => r.DeviceId == deviceId)
             .OrderByDescending(r => r.InspectionTime)
@@ -247,9 +274,12 @@ public class InspectionRecordService : IInspectionRecordService
         var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var totalPlans = await _context.InspectionPlans.CountAsync();
-        var pendingPlans = await _context.InspectionPlans.CountAsync(p => p.Status == InspectionPlanStatus.Pending);
-        var inProgressPlans = await _context.InspectionPlans.CountAsync(p => p.Status == InspectionPlanStatus.InProgress);
-        var completedPlans = await _context.InspectionPlans.CountAsync(p => p.Status == InspectionPlanStatus.Completed);
+        var activePlans = await _context.InspectionPlans.CountAsync(p => p.Status == InspectionPlanStatus.Active);
+
+        var totalTasks = await _context.InspectionTasks.CountAsync();
+        var pendingTasks = await _context.InspectionTasks.CountAsync(t => t.Status == InspectionTaskStatus.Pending);
+        var inProgressTasks = await _context.InspectionTasks.CountAsync(t => t.Status == InspectionTaskStatus.InProgress);
+        var completedTasks = await _context.InspectionTasks.CountAsync(t => t.Status == InspectionTaskStatus.Completed);
 
         var totalRecords = await _context.InspectionRecords.CountAsync();
         var normalRecords = await _context.InspectionRecords.CountAsync(r => r.Result == InspectionResult.Normal);
@@ -261,9 +291,11 @@ public class InspectionRecordService : IInspectionRecordService
         return new InspectionStatisticsDto
         {
             TotalPlanCount = totalPlans,
-            PendingPlanCount = pendingPlans,
-            InProgressPlanCount = inProgressPlans,
-            CompletedPlanCount = completedPlans,
+            ActivePlanCount = activePlans,
+            TotalTaskCount = totalTasks,
+            PendingTaskCount = pendingTasks,
+            InProgressTaskCount = inProgressTasks,
+            CompletedTaskCount = completedTasks,
             TotalRecordCount = totalRecords,
             NormalRecordCount = normalRecords,
             AbnormalRecordCount = abnormalRecords,

@@ -13,10 +13,12 @@ namespace DeviceMaintenanceSystem.Controllers;
 public class InspectionPlansController : ControllerBase
 {
     private readonly IInspectionPlanService _inspectionPlanService;
+    private readonly IInspectionTaskService _inspectionTaskService;
 
-    public InspectionPlansController(IInspectionPlanService inspectionPlanService)
+    public InspectionPlansController(IInspectionPlanService inspectionPlanService, IInspectionTaskService inspectionTaskService)
     {
         _inspectionPlanService = inspectionPlanService;
+        _inspectionTaskService = inspectionTaskService;
     }
 
     [HttpGet]
@@ -32,6 +34,13 @@ public class InspectionPlansController : ControllerBase
         var plan = await _inspectionPlanService.GetByIdAsync(id);
         if (plan == null) return NotFound();
         return Ok(plan);
+    }
+
+    [HttpGet("{id}/tasks")]
+    public async Task<ActionResult<List<InspectionTaskDto>>> GetPlanTasks(int id)
+    {
+        var tasks = await _inspectionTaskService.GetPlanTasksAsync(id);
+        return Ok(tasks);
     }
 
     [HttpPost]
@@ -71,13 +80,13 @@ public class InspectionPlansController : ControllerBase
         return NoContent();
     }
 
-    [HttpPost("{id}/start")]
-    [Authorize(Roles = $"{nameof(UserRole.Admin)},{nameof(UserRole.Technician)}")]
-    public async Task<ActionResult<InspectionPlanDto>> Start(int id)
+    [HttpPost("{id}/pause")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<InspectionPlanDto>> Pause(int id)
     {
         try
         {
-            var plan = await _inspectionPlanService.StartAsync(id);
+            var plan = await _inspectionPlanService.PauseAsync(id);
             if (plan == null) return NotFound();
             return Ok(plan);
         }
@@ -87,13 +96,13 @@ public class InspectionPlansController : ControllerBase
         }
     }
 
-    [HttpPost("{id}/complete")]
-    [Authorize(Roles = $"{nameof(UserRole.Admin)},{nameof(UserRole.Technician)}")]
-    public async Task<ActionResult<InspectionPlanDto>> Complete(int id)
+    [HttpPost("{id}/resume")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult<InspectionPlanDto>> Resume(int id)
     {
         try
         {
-            var plan = await _inspectionPlanService.CompleteAsync(id);
+            var plan = await _inspectionPlanService.ResumeAsync(id);
             if (plan == null) return NotFound();
             return Ok(plan);
         }
@@ -116,6 +125,25 @@ public class InspectionPlansController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("{id}/generate-tasks")]
+    [Authorize(Roles = nameof(UserRole.Admin))]
+    public async Task<ActionResult> GenerateTasks(int id, [FromQuery] int count = 30)
+    {
+        try
+        {
+            var generated = await _inspectionPlanService.GenerateTasksAsync(id, count);
+            return Ok(new { generatedCount = generated });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
     }
 }

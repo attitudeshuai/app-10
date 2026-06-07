@@ -77,6 +77,28 @@ public class DeviceService : IDeviceService
         return device == null ? null : _mapper.Map<DeviceDto>(device);
     }
 
+    public async Task<DeviceDetailDto?> GetDetailByIdAsync(int id)
+    {
+        var device = await _context.Devices
+            .Include(d => d.InspectionRecords)
+                .ThenInclude(r => r.Photos)
+            .Include(d => d.InspectionRecords)
+                .ThenInclude(r => r.Inspector)
+            .FirstOrDefaultAsync(d => d.Id == id);
+
+        if (device == null) return null;
+
+        var detail = _mapper.Map<DeviceDetailDto>(device);
+        detail.InspectionRecordCount = device.InspectionRecords.Count;
+        detail.RecentInspectionRecords = device.InspectionRecords
+            .OrderByDescending(r => r.InspectionTime)
+            .Take(10)
+            .Select(r => _mapper.Map<InspectionRecordDto>(r))
+            .ToList();
+
+        return detail;
+    }
+
     public async Task<DeviceDto> CreateAsync(CreateDeviceDto dto)
     {
         if (await _context.Devices.AnyAsync(d => d.DeviceCode == dto.DeviceCode))
@@ -131,9 +153,11 @@ public class DeviceService : IDeviceService
 
         var hasRelatedPlans = await _context.MaintenancePlans.AnyAsync(p => p.DeviceId == id);
         var hasRelatedFaults = await _context.FaultReports.AnyAsync(f => f.DeviceId == id);
-        if (hasRelatedPlans || hasRelatedFaults)
+        var hasRelatedInspectionPlans = await _context.InspectionPlans.AnyAsync(p => p.DeviceId == id);
+        var hasRelatedInspectionRecords = await _context.InspectionRecords.AnyAsync(r => r.DeviceId == id);
+        if (hasRelatedPlans || hasRelatedFaults || hasRelatedInspectionPlans || hasRelatedInspectionRecords)
         {
-            throw new InvalidOperationException("该设备有关联的保养计划或故障报修，无法删除");
+            throw new InvalidOperationException("该设备有关联的保养计划、故障报修或巡检记录，无法删除");
         }
 
         _context.Devices.Remove(device);

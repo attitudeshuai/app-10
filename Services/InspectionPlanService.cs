@@ -46,10 +46,10 @@ public class InspectionPlanService : IInspectionPlanService
             queryable = queryable.Where(p => p.AssignedTechnicianId == query.AssignedTechnicianId.Value);
 
         if (query.StartDate.HasValue)
-            queryable = queryable.Where(p => p.PlannedDate >= query.StartDate.Value);
+            queryable = queryable.Where(p => p.StartDate >= query.StartDate.Value);
 
         if (query.EndDate.HasValue)
-            queryable = queryable.Where(p => p.PlannedDate <= query.EndDate.Value);
+            queryable = queryable.Where(p => p.StartDate <= query.EndDate.Value);
 
         var totalCount = await queryable.CountAsync();
 
@@ -58,7 +58,7 @@ public class InspectionPlanService : IInspectionPlanService
         {
             "plancode" => query.SortDesc ? queryable.OrderByDescending(p => p.PlanCode) : queryable.OrderBy(p => p.PlanCode),
             "title" => query.SortDesc ? queryable.OrderByDescending(p => p.Title) : queryable.OrderBy(p => p.Title),
-            "planneddate" => query.SortDesc ? queryable.OrderByDescending(p => p.PlannedDate) : queryable.OrderBy(p => p.PlannedDate),
+            "startdate" => query.SortDesc ? queryable.OrderByDescending(p => p.StartDate) : queryable.OrderBy(p => p.StartDate),
             "status" => query.SortDesc ? queryable.OrderByDescending(p => p.Status) : queryable.OrderBy(p => p.Status),
             "createdat" => query.SortDesc ? queryable.OrderByDescending(p => p.CreatedAt) : queryable.OrderBy(p => p.CreatedAt),
             _ => query.SortDesc ? queryable.OrderByDescending(p => p.Id) : queryable.OrderBy(p => p.Id)
@@ -112,12 +112,17 @@ public class InspectionPlanService : IInspectionPlanService
         }
 
         var plan = _mapper.Map<InspectionPlan>(dto);
-        plan.Status = InspectionPlanStatus.Pending;
+        plan.Status = InspectionPlanStatus.Active;
         plan.CreatedAt = DateTime.UtcNow;
         plan.UpdatedAt = DateTime.UtcNow;
 
         _context.InspectionPlans.Add(plan);
         await _context.SaveChangesAsync();
+
+        if (dto.GenerateTaskCount > 0)
+        {
+            await GenerateTasksAsync(plan.Id, dto.GenerateTaskCount);
+        }
 
         return await GetByIdAsync(plan.Id) ?? _mapper.Map<InspectionPlanDto>(plan);
     }
@@ -133,8 +138,10 @@ public class InspectionPlanService : IInspectionPlanService
             plan.DeviceId = dto.DeviceId.Value;
         if (dto.Cycle.HasValue)
             plan.Cycle = dto.Cycle.Value;
-        if (dto.PlannedDate.HasValue)
-            plan.PlannedDate = dto.PlannedDate.Value;
+        if (dto.StartDate.HasValue)
+            plan.StartDate = dto.StartDate.Value;
+        if (dto.EndDate.HasValue)
+            plan.EndDate = dto.EndDate.Value;
         if (dto.AssignedTechnicianId.HasValue)
             plan.AssignedTechnicianId = dto.AssignedTechnicianId.Value;
         if (dto.InspectionContent != null)
@@ -158,31 +165,28 @@ public class InspectionPlanService : IInspectionPlanService
         return true;
     }
 
-    public async Task<InspectionPlanDto?> StartAsync(int id)
+    public async Task<InspectionPlanDto?> PauseAsync(int id)
     {
         var plan = await _context.InspectionPlans.FindAsync(id);
         if (plan == null) return null;
-        if (plan.Status != InspectionPlanStatus.Pending)
-            throw new InvalidOperationException("只有待执行的计划才能开始");
+        if (plan.Status != InspectionPlanStatus.Active)
+            throw new InvalidOperationException("只有启用状态的计划才能暂停");
 
-        plan.Status = InspectionPlanStatus.InProgress;
+        plan.Status = InspectionPlanStatus.Paused;
         plan.UpdatedAt = DateTime.UtcNow;
-
         await _context.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
 
-    public async Task<InspectionPlanDto?> CompleteAsync(int id)
+    public async Task<InspectionPlanDto?> ResumeAsync(int id)
     {
         var plan = await _context.InspectionPlans.FindAsync(id);
         if (plan == null) return null;
-        if (plan.Status != InspectionPlanStatus.InProgress)
-            throw new InvalidOperationException("只有执行中的计划才能完成");
+        if (plan.Status != InspectionPlanStatus.Paused)
+            throw new InvalidOperationException("只有暂停状态的计划才能恢复");
 
-        plan.Status = InspectionPlanStatus.Completed;
-        plan.ActualInspectionDate = DateTime.UtcNow;
+        plan.Status = InspectionPlanStatus.Active;
         plan.UpdatedAt = DateTime.UtcNow;
-
         await _context.SaveChangesAsync();
         return await GetByIdAsync(id);
     }
@@ -198,5 +202,79 @@ public class InspectionPlanService : IInspectionPlanService
         plan.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return await GetByIdAsync(id);
+    }
+
+    public async Task<int> GenerateTasksAsync(int planId, int count)
+    {
+        var plan = await _context.InspectionPlans.FindAsync(planId);
+        if (plan == null)
+        {
+            throw new KeyNotFoundException("巡检计划不存在");
+        }
+
+        if (plan.Status != InspectionPlanStatus.Active && plan.Status != InspectionPlanStatus.Paused)
+        {
+            throw new InvalidOperationException("只有启用或暂停状态的计划才能生成任务");
+        }
+
+        if (count <= 0 || count > 365)
+        {
+            throw new InvalidOperationException("生成数量必须在1-365之间");
+        }
+
+        var lastTask = await _context.InspectionTasks
+            .Where(t => t.InspectionPlanId == planId)
+            .OrderByDescending(t => t.ScheduledDate)
+            .FirstOrDefaultAsync();
+
+        var startDate = lastTask != null ? lastTask.ScheduledDate : plan.StartDate;
+        var generatedCount = 0;
+        var tasks = new List<InspectionTask>();
+
+        for (int i = 0; i < count; i++)
+        {
+            var scheduledDate = GetNextScheduledDate(startDate, plan.Cycle, i + (lastTask != null ? 1 : 0));
+
+            if (plan.EndDate.HasValue && scheduledDate > plan.EndDate.Value)
+            {
+                break;
+            }
+
+            var taskCode = $"IT{plan.PlanCode}-{scheduledDate:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+
+            var task = new InspectionTask
+            {
+                TaskCode = taskCode,
+                InspectionPlanId = planId,
+                DeviceId = plan.DeviceId,
+                AssignedTechnicianId = plan.AssignedTechnicianId,
+                InspectionContent = plan.InspectionContent,
+                ScheduledDate = scheduledDate,
+                Status = InspectionTaskStatus.Pending,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            tasks.Add(task);
+            generatedCount++;
+        }
+
+        _context.InspectionTasks.AddRange(tasks);
+        plan.GeneratedTaskCount += generatedCount;
+        plan.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+        return generatedCount;
+    }
+
+    private DateTime GetNextScheduledDate(DateTime startDate, InspectionCycle cycle, int index)
+    {
+        return cycle switch
+        {
+            InspectionCycle.Daily => startDate.AddDays(index),
+            InspectionCycle.Weekly => startDate.AddDays(index * 7),
+            InspectionCycle.Monthly => startDate.AddMonths(index),
+            _ => startDate.AddDays(index)
+        };
     }
 }

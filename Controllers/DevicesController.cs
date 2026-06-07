@@ -40,6 +40,14 @@ public class DevicesController : ControllerBase
         return Ok(device);
     }
 
+    [HttpGet("{id}/detail")]
+    public async Task<ActionResult<DeviceDetailDto>> GetDetail(int id)
+    {
+        var device = await _deviceService.GetDetailByIdAsync(id);
+        if (device == null) return NotFound();
+        return Ok(device);
+    }
+
     [HttpPost]
     [Authorize(Roles = nameof(UserRole.Admin))]
     public async Task<ActionResult<DeviceDto>> Create([FromBody] CreateDeviceDto dto)

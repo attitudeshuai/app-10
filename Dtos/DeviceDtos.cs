@@ -18,6 +18,12 @@ public class DeviceDto
     public DateTime CreatedAt { get; set; }
 }
 
+public class DeviceDetailDto : DeviceDto
+{
+    public List<InspectionRecordDto> RecentInspectionRecords { get; set; } = new List<InspectionRecordDto>();
+    public int InspectionRecordCount { get; set; }
+}
+
 public class CreateDeviceDto
 {
     public string DeviceCode { get; set; } = string.Empty;

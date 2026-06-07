@@ -25,6 +25,7 @@ public interface IDeviceService
 {
     Task<PagedResult<DeviceDto>> GetPagedAsync(DeviceQueryDto query);
     Task<DeviceDto?> GetByIdAsync(int id);
+    Task<DeviceDetailDto?> GetDetailByIdAsync(int id);
     Task<DeviceDto> CreateAsync(CreateDeviceDto dto);
     Task<DeviceDto?> UpdateAsync(int id, UpdateDeviceDto dto);
     Task<bool> DeleteAsync(int id);
@@ -76,9 +77,20 @@ public interface IInspectionPlanService
     Task<InspectionPlanDto> CreateAsync(CreateInspectionPlanDto dto);
     Task<InspectionPlanDto?> UpdateAsync(int id, UpdateInspectionPlanDto dto);
     Task<bool> DeleteAsync(int id);
-    Task<InspectionPlanDto?> StartAsync(int id);
-    Task<InspectionPlanDto?> CompleteAsync(int id);
+    Task<InspectionPlanDto?> PauseAsync(int id);
+    Task<InspectionPlanDto?> ResumeAsync(int id);
     Task<InspectionPlanDto?> CancelAsync(int id);
+    Task<int> GenerateTasksAsync(int planId, int count);
+}
+
+public interface IInspectionTaskService
+{
+    Task<PagedResult<InspectionTaskDto>> GetPagedAsync(InspectionTaskQueryDto query);
+    Task<InspectionTaskDto?> GetByIdAsync(int id);
+    Task<InspectionTaskDto?> StartAsync(int id);
+    Task<InspectionTaskDto?> CompleteAsync(int id);
+    Task<InspectionTaskDto?> CancelAsync(int id);
+    Task<List<InspectionTaskDto>> GetPlanTasksAsync(int planId);
 }
 
 public interface IInspectionRecordService

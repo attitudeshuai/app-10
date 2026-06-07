@@ -29,5 +29,6 @@ public class Device
     public ICollection<FaultReport> FaultReports { get; set; } = new List<FaultReport>();
     public ICollection<SparePart> SpareParts { get; set; } = new List<SparePart>();
     public ICollection<InspectionPlan> InspectionPlans { get; set; } = new List<InspectionPlan>();
+    public ICollection<InspectionTask> InspectionTasks { get; set; } = new List<InspectionTask>();
     public ICollection<InspectionRecord> InspectionRecords { get; set; } = new List<InspectionRecord>();
 }
