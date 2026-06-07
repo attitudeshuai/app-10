@@ -82,6 +82,7 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IMaintenancePlanService, MaintenancePlanService>();
+builder.Services.AddScoped<IMaintenanceScheduleService, MaintenanceScheduleService>();
 builder.Services.AddScoped<IFaultReportService, FaultReportService>();
 builder.Services.AddScoped<ISparePartService, SparePartService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
@@ -95,6 +96,7 @@ builder.Services.AddSingleton<INotificationQueue, NotificationQueue>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHostedService<NotificationBackgroundService>();
 builder.Services.AddHostedService<MaintenanceReminderBackgroundService>();
+builder.Services.AddHostedService<MaintenanceScheduleBackgroundService>();
 builder.Services.AddHostedService<ContractReminderBackgroundService>();
 
 builder.Services.AddCors(options =>

@@ -24,6 +24,7 @@ public class MaintenancePlanService : IMaintenancePlanService
         var queryable = _context.MaintenancePlans
             .Include(p => p.Device)
             .Include(p => p.ResponsibleTechnician)
+            .Include(p => p.MaintenanceSchedule)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query.SearchKeyword))
@@ -46,6 +47,9 @@ public class MaintenancePlanService : IMaintenancePlanService
 
         if (query.ResponsibleTechnicianId.HasValue)
             queryable = queryable.Where(p => p.ResponsibleTechnicianId == query.ResponsibleTechnicianId.Value);
+
+        if (query.MaintenanceScheduleId.HasValue)
+            queryable = queryable.Where(p => p.MaintenanceScheduleId == query.MaintenanceScheduleId.Value);
 
         if (query.StartDate.HasValue)
             queryable = queryable.Where(p => p.PlannedDate >= query.StartDate.Value);
@@ -87,6 +91,7 @@ public class MaintenancePlanService : IMaintenancePlanService
         var plan = await _context.MaintenancePlans
             .Include(p => p.Device)
             .Include(p => p.ResponsibleTechnician)
+            .Include(p => p.MaintenanceSchedule)
             .FirstOrDefaultAsync(p => p.Id == id);
         return plan == null ? null : _mapper.Map<MaintenancePlanDto>(plan);
     }

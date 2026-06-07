@@ -35,6 +35,8 @@ public class MaintenancePlan
     public DateTime? ActualEndDate { get; set; }
     public string? Result { get; set; }
     public string? Remark { get; set; }
+    public int? MaintenanceScheduleId { get; set; }
+    public MaintenanceSchedule? MaintenanceSchedule { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

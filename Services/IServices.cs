@@ -47,6 +47,20 @@ public interface IMaintenancePlanService
     Task<int> SendUpcomingRemindersAsync(int daysAhead = 3);
 }
 
+public interface IMaintenanceScheduleService
+{
+    Task<PagedResult<MaintenanceScheduleDto>> GetPagedAsync(MaintenanceScheduleQueryDto query);
+    Task<MaintenanceScheduleDto?> GetByIdAsync(int id);
+    Task<MaintenanceScheduleDto> CreateAsync(CreateMaintenanceScheduleDto dto);
+    Task<MaintenanceScheduleDto?> UpdateAsync(int id, UpdateMaintenanceScheduleDto dto);
+    Task<bool> DeleteAsync(int id);
+    Task<MaintenanceScheduleDto?> PauseAsync(int id);
+    Task<MaintenanceScheduleDto?> ResumeAsync(int id);
+    Task<MaintenanceScheduleDto?> CancelAsync(int id);
+    Task<int> GeneratePlansAsync(int scheduleId, int count);
+    Task<int> GenerateUpcomingPlansAsync(int monthsAhead = 3);
+}
+
 public interface IFaultReportService
 {
     Task<PagedResult<FaultReportDto>> GetPagedAsync(FaultReportQueryDto query);

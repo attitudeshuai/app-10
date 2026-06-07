@@ -10,6 +10,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<Device> Devices { get; set; }
     public DbSet<MaintenancePlan> MaintenancePlans { get; set; }
+    public DbSet<MaintenanceSchedule> MaintenanceSchedules { get; set; }
     public DbSet<FaultReport> FaultReports { get; set; }
     public DbSet<SparePart> SpareParts { get; set; }
     public DbSet<SparePartConsumption> SparePartConsumptions { get; set; }
@@ -63,6 +64,36 @@ public class AppDbContext : DbContext
             .HasOne(p => p.ResponsibleTechnician)
             .WithMany()
             .HasForeignKey(p => p.ResponsibleTechnicianId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<MaintenancePlan>()
+            .HasOne(p => p.MaintenanceSchedule)
+            .WithMany(s => s.MaintenancePlans)
+            .HasForeignKey(p => p.MaintenanceScheduleId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<MaintenanceSchedule>()
+            .HasIndex(s => s.ScheduleCode)
+            .IsUnique();
+
+        modelBuilder.Entity<MaintenanceSchedule>()
+            .Property(s => s.Status)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MaintenanceSchedule>()
+            .Property(s => s.Cycle)
+            .HasConversion<string>();
+
+        modelBuilder.Entity<MaintenanceSchedule>()
+            .HasOne(s => s.Device)
+            .WithMany()
+            .HasForeignKey(s => s.DeviceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MaintenanceSchedule>()
+            .HasOne(s => s.ResponsibleTechnician)
+            .WithMany()
+            .HasForeignKey(s => s.ResponsibleTechnicianId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<FaultReport>()

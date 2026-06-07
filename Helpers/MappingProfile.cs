@@ -14,8 +14,15 @@ public class MappingProfile : Profile
         CreateMap<MaintenancePlan, MaintenancePlanDto>()
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
             .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
-            .ForMember(d => d.ResponsibleTechnicianName, opt => opt.MapFrom(s => s.ResponsibleTechnician != null ? s.ResponsibleTechnician.RealName : null));
+            .ForMember(d => d.ResponsibleTechnicianName, opt => opt.MapFrom(s => s.ResponsibleTechnician != null ? s.ResponsibleTechnician.RealName : null))
+            .ForMember(d => d.MaintenanceScheduleCode, opt => opt.MapFrom(s => s.MaintenanceSchedule != null ? s.MaintenanceSchedule.ScheduleCode : null));
         CreateMap<CreateMaintenancePlanDto, MaintenancePlan>();
+
+        CreateMap<MaintenanceSchedule, MaintenanceScheduleDto>()
+            .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
+            .ForMember(d => d.DeviceCode, opt => opt.MapFrom(s => s.Device != null ? s.Device.DeviceCode : null))
+            .ForMember(d => d.ResponsibleTechnicianName, opt => opt.MapFrom(s => s.ResponsibleTechnician != null ? s.ResponsibleTechnician.RealName : null));
+        CreateMap<CreateMaintenanceScheduleDto, MaintenanceSchedule>();
 
         CreateMap<FaultReport, FaultReportDto>()
             .ForMember(d => d.DeviceName, opt => opt.MapFrom(s => s.Device != null ? s.Device.Name : null))
