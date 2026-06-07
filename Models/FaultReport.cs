@@ -40,4 +40,6 @@ public class FaultReport
     public string? Remark { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    public ICollection<SparePartConsumption> SparePartConsumptions { get; set; } = new List<SparePartConsumption>();
 }

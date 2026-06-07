@@ -56,6 +56,7 @@ public class CompleteFaultReportDto
 {
     public string Solution { get; set; } = string.Empty;
     public string? Remark { get; set; }
+    public List<SparePartConsumptionItemDto>? SparePartConsumptions { get; set; }
 }
 
 public class FaultReportQueryDto : PagedQuery

@@ -56,3 +56,14 @@ public interface IFaultReportService
     Task<FaultReportDto?> CancelAsync(int id);
     Task<FaultStatisticsDto> GetStatisticsAsync();
 }
+
+public interface ISparePartService
+{
+    Task<PagedResult<SparePartDto>> GetPagedAsync(SparePartQueryDto query);
+    Task<SparePartDto?> GetByIdAsync(int id);
+    Task<SparePartDto> CreateAsync(CreateSparePartDto dto);
+    Task<SparePartDto?> UpdateAsync(int id, UpdateSparePartDto dto);
+    Task<bool> DeleteAsync(int id);
+    Task<SparePartStatisticsDto> GetStatisticsAsync();
+    Task<PagedResult<SparePartConsumptionDto>> GetConsumptionsAsync(SparePartConsumptionQueryDto query);
+}

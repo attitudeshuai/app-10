@@ -11,6 +11,8 @@ public class AppDbContext : DbContext
     public DbSet<Device> Devices { get; set; }
     public DbSet<MaintenancePlan> MaintenancePlans { get; set; }
     public DbSet<FaultReport> FaultReports { get; set; }
+    public DbSet<SparePart> SpareParts { get; set; }
+    public DbSet<SparePartConsumption> SparePartConsumptions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -83,5 +85,27 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(f => f.AssignedTechnicianId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<SparePart>()
+            .HasIndex(s => new { s.DeviceId, s.Name, s.Specification })
+            .IsUnique();
+
+        modelBuilder.Entity<SparePart>()
+            .HasOne(s => s.Device)
+            .WithMany(d => d.SpareParts)
+            .HasForeignKey(s => s.DeviceId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SparePartConsumption>()
+            .HasOne(c => c.SparePart)
+            .WithMany(s => s.Consumptions)
+            .HasForeignKey(c => c.SparePartId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<SparePartConsumption>()
+            .HasOne(c => c.FaultReport)
+            .WithMany(f => f.SparePartConsumptions)
+            .HasForeignKey(c => c.FaultReportId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

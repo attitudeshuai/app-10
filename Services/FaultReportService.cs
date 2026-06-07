@@ -198,7 +198,9 @@ public class FaultReportService : IFaultReportService
 
     public async Task<FaultReportDto?> CompleteAsync(int id, CompleteFaultReportDto dto)
     {
-        var report = await _context.FaultReports.FindAsync(id);
+        var report = await _context.FaultReports
+            .Include(f => f.Device)
+            .FirstOrDefaultAsync(f => f.Id == id);
         if (report == null) return null;
         if (report.Status != FaultStatus.InProgress)
             throw new InvalidOperationException("只有维修中的故障报修才能完成");
@@ -210,11 +212,57 @@ public class FaultReportService : IFaultReportService
             report.Remark = dto.Remark;
         report.UpdatedAt = DateTime.UtcNow;
 
-        var device = await _context.Devices.FindAsync(report.DeviceId);
+        var device = report.Device;
         if (device != null && device.Status == DeviceStatus.Fault)
         {
             device.Status = DeviceStatus.Running;
             device.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (dto.SparePartConsumptions != null && dto.SparePartConsumptions.Any())
+        {
+            var sparePartIds = dto.SparePartConsumptions.Select(c => c.SparePartId).Distinct().ToList();
+            var spareParts = await _context.SpareParts
+                .Where(s => sparePartIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id);
+
+            foreach (var item in dto.SparePartConsumptions)
+            {
+                if (!spareParts.TryGetValue(item.SparePartId, out var sparePart))
+                {
+                    throw new KeyNotFoundException($"备件 ID {item.SparePartId} 不存在");
+                }
+
+                if (item.Quantity <= 0)
+                {
+                    throw new InvalidOperationException($"备件 {sparePart.Name} 的消耗数量必须大于0");
+                }
+
+                if (sparePart.StockQuantity < item.Quantity)
+                {
+                    throw new InvalidOperationException($"备件 {sparePart.Name} 库存不足，当前库存：{sparePart.StockQuantity}，需要：{item.Quantity}");
+                }
+
+                if (report.DeviceId != sparePart.DeviceId)
+                {
+                    throw new InvalidOperationException($"备件 {sparePart.Name} 不属于当前故障设备");
+                }
+
+                sparePart.StockQuantity -= item.Quantity;
+                sparePart.UpdatedAt = DateTime.UtcNow;
+
+                var consumption = new SparePartConsumption
+                {
+                    SparePartId = item.SparePartId,
+                    FaultReportId = id,
+                    Quantity = item.Quantity,
+                    ConsumedAt = DateTime.UtcNow,
+                    Remark = item.Remark,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                _context.SparePartConsumptions.Add(consumption);
+            }
         }
 
         await _context.SaveChangesAsync();

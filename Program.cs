@@ -83,6 +83,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IDeviceService, DeviceService>();
 builder.Services.AddScoped<IMaintenancePlanService, MaintenancePlanService>();
 builder.Services.AddScoped<IFaultReportService, FaultReportService>();
+builder.Services.AddScoped<ISparePartService, SparePartService>();
 
 builder.Services.AddCors(options =>
 {
