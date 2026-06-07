@@ -117,8 +117,6 @@ public class DeviceService : IDeviceService
         var device = await _context.Devices.FindAsync(id);
         if (device == null) return null;
 
-        var oldStatus = device.Status;
-
         if (!string.IsNullOrWhiteSpace(dto.Name))
             device.Name = dto.Name;
         if (!string.IsNullOrWhiteSpace(dto.Category))
@@ -133,15 +131,45 @@ public class DeviceService : IDeviceService
             device.PurchasePrice = dto.PurchasePrice.Value;
         if (!string.IsNullOrWhiteSpace(dto.Location))
             device.Location = dto.Location;
-        if (dto.Status.HasValue)
-            device.Status = dto.Status.Value;
         if (dto.Description != null)
             device.Description = dto.Description;
 
         device.UpdatedAt = DateTime.UtcNow;
+
+        if (dto.Status.HasValue && dto.Status.Value != device.Status)
+        {
+            await UpdateStatusCoreAsync(device, dto.Status.Value);
+        }
+        else
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        return _mapper.Map<DeviceDto>(device);
+    }
+
+    public async Task<DeviceDto?> UpdateStatusAsync(int id, DeviceStatus newStatus)
+    {
+        var device = await _context.Devices.FindAsync(id);
+        if (device == null) return null;
+
+        if (device.Status == newStatus)
+        {
+            return _mapper.Map<DeviceDto>(device);
+        }
+
+        await UpdateStatusCoreAsync(device, newStatus);
+        return _mapper.Map<DeviceDto>(device);
+    }
+
+    private async Task UpdateStatusCoreAsync(Device device, DeviceStatus newStatus)
+    {
+        var oldStatus = device.Status;
+        device.Status = newStatus;
+        device.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        if (dto.Status.HasValue && oldStatus != dto.Status.Value && dto.Status.Value == DeviceStatus.Fault)
+        if (newStatus == DeviceStatus.Fault)
         {
             var adminUserIds = await _context.Users
                 .Where(u => u.Role == UserRole.Admin && u.IsActive)
@@ -154,7 +182,7 @@ public class DeviceService : IDeviceService
                 {
                     UserIds = adminUserIds,
                     Title = $"设备故障告警: {device.DeviceCode}",
-                    Content = $"设备 {device.Name}（{device.DeviceCode}）状态已变为故障，请及时安排维修。",
+                    Content = $"设备 {device.Name}（{device.DeviceCode}）状态已从 {oldStatus} 变为故障，请及时安排维修。",
                     Type = NotificationType.DeviceStatusChanged,
                     Priority = NotificationPriority.High,
                     RelatedEntityType = RelatedEntityType.Device,
@@ -162,8 +190,6 @@ public class DeviceService : IDeviceService
                 });
             }
         }
-
-        return _mapper.Map<DeviceDto>(device);
     }
 
     public async Task<bool> DeleteAsync(int id)

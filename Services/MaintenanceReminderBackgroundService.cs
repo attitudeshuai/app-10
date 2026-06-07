@@ -25,6 +25,13 @@ public class MaintenanceReminderBackgroundService : BackgroundService
     {
         _logger.LogInformation("Maintenance Reminder Background Service is starting.");
 
+        if (IsTodayRunPassed())
+        {
+            _logger.LogInformation("Today's reminder time has passed, running immediately after short delay.");
+            await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+            await RunReminderAsync(stoppingToken);
+        }
+
         while (!stoppingToken.IsCancellationRequested)
         {
             try
@@ -48,6 +55,13 @@ public class MaintenanceReminderBackgroundService : BackgroundService
         }
 
         _logger.LogInformation("Maintenance Reminder Background Service is stopping.");
+    }
+
+    private bool IsTodayRunPassed()
+    {
+        var now = DateTime.Now;
+        var todayRun = now.Date + _runAtTime;
+        return now >= todayRun;
     }
 
     private TimeSpan GetNextRunDelay()

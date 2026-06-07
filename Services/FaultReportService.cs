@@ -11,12 +11,18 @@ public class FaultReportService : IFaultReportService
     private readonly AppDbContext _context;
     private readonly IMapper _mapper;
     private readonly INotificationService _notificationService;
+    private readonly IDeviceService _deviceService;
 
-    public FaultReportService(AppDbContext context, IMapper mapper, INotificationService notificationService)
+    public FaultReportService(
+        AppDbContext context,
+        IMapper mapper,
+        INotificationService notificationService,
+        IDeviceService deviceService)
     {
         _context = context;
         _mapper = mapper;
         _notificationService = notificationService;
+        _deviceService = deviceService;
     }
 
     public async Task<PagedResult<FaultReportDto>> GetPagedAsync(FaultReportQueryDto query)
@@ -117,36 +123,12 @@ public class FaultReportService : IFaultReportService
         report.CreatedAt = DateTime.UtcNow;
         report.UpdatedAt = DateTime.UtcNow;
 
-        var oldDeviceStatus = device.Status;
-        if (oldDeviceStatus == DeviceStatus.Running || oldDeviceStatus == DeviceStatus.Standby)
-        {
-            device.Status = DeviceStatus.Fault;
-            device.UpdatedAt = DateTime.UtcNow;
-        }
-
         _context.FaultReports.Add(report);
         await _context.SaveChangesAsync();
 
-        if (oldDeviceStatus == DeviceStatus.Running || oldDeviceStatus == DeviceStatus.Standby)
+        if (device.Status == DeviceStatus.Running || device.Status == DeviceStatus.Standby)
         {
-            var adminUserIds = await _context.Users
-                .Where(u => u.Role == UserRole.Admin && u.IsActive)
-                .Select(u => u.Id)
-                .ToListAsync();
-
-            if (adminUserIds.Count > 0)
-            {
-                _ = _notificationService.BatchEnqueueAsync(new BatchCreateNotificationDto
-                {
-                    UserIds = adminUserIds,
-                    Title = $"设备故障告警: {device.DeviceCode}",
-                    Content = $"设备 {device.Name}（{device.DeviceCode}）因故障报修已变为故障状态，请及时安排维修。",
-                    Type = NotificationType.DeviceStatusChanged,
-                    Priority = NotificationPriority.High,
-                    RelatedEntityType = RelatedEntityType.Device,
-                    RelatedEntityId = device.Id
-                });
-            }
+            _ = _deviceService.UpdateStatusAsync(device.Id, DeviceStatus.Fault);
         }
 
         return await GetByIdAsync(report.Id) ?? _mapper.Map<FaultReportDto>(report);

@@ -205,24 +205,14 @@ public class NotificationService : INotificationService
                 IsRead = false
             };
 
-            _context.Notifications.Add(notification);
-            await _context.SaveChangesAsync();
-
-            try
+            if (!_queue.Enqueue(notification))
             {
-                if (!_queue.Enqueue(notification))
-                {
-                    _logger.LogWarning("通知写入队列失败（队列已满，已落库兜底），通知ID: {NotificationId}", notification.Id);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "通知写入队列异常（已落库兜底），通知ID: {NotificationId}", notification.Id);
+                _logger.LogError("通知入队失败（队列已满），用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "创建通知异常，用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
+            _logger.LogError(ex, "通知入队异常，用户ID: {UserId}, 标题: {Title}", dto.UserId, dto.Title);
         }
     }
 
@@ -258,25 +248,15 @@ public class NotificationService : INotificationService
                 IsRead = false
             }).ToList();
 
-            _context.Notifications.AddRange(notifications);
-            await _context.SaveChangesAsync();
-
-            try
+            var successCount = _queue.EnqueueRange(notifications);
+            if (successCount < notifications.Count)
             {
-                var successCount = _queue.EnqueueRange(notifications);
-                if (successCount < notifications.Count)
-                {
-                    _logger.LogWarning("批量通知写入队列部分失败（队列可能已满，已落库兜底），成功: {SuccessCount}, 总计: {TotalCount}", successCount, notifications.Count);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "批量通知写入队列异常（已落库兜底），数量: {Count}", notifications.Count);
+                _logger.LogError("批量通知入队部分失败（队列可能已满），成功: {SuccessCount}, 总计: {TotalCount}", successCount, notifications.Count);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "批量创建通知异常，数量: {Count}, 标题: {Title}", dto.UserIds?.Count ?? 0, dto.Title);
+            _logger.LogError(ex, "批量通知入队异常，数量: {Count}, 标题: {Title}", dto.UserIds?.Count ?? 0, dto.Title);
         }
     }
 

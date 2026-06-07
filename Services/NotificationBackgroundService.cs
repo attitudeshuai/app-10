@@ -27,7 +27,7 @@ public class NotificationBackgroundService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Notification Background Processing Service is starting.");
+        _logger.LogInformation("Notification Background Service is starting.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -50,12 +50,36 @@ public class NotificationBackgroundService : BackgroundService
             }
         }
 
-        _logger.LogInformation("Notification Background Processing Service is stopping.");
+        _logger.LogInformation("Notification Background Service is stopping.");
     }
 
-    private Task ProcessBatchAsync(List<Notification> batch, CancellationToken stoppingToken)
+    private async Task ProcessBatchAsync(List<Notification> batch, CancellationToken stoppingToken)
     {
-        _logger.LogDebug("Processed {Count} notifications in post-processing batch.", batch.Count);
-        return Task.CompletedTask;
+        using var scope = _scopeFactory.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var validBatch = new List<Notification>();
+        var userIds = batch.Select(n => n.UserId).Distinct().ToList();
+
+        var validUserIds = await context.Users
+            .Where(u => userIds.Contains(u.Id) && u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync(stoppingToken);
+
+        var validUserSet = new HashSet<int>(validUserIds);
+        foreach (var notification in batch)
+        {
+            if (validUserSet.Contains(notification.UserId))
+            {
+                validBatch.Add(notification);
+            }
+        }
+
+        if (validBatch.Count == 0) return;
+
+        context.Notifications.AddRange(validBatch);
+        await context.SaveChangesAsync(stoppingToken);
+
+        _logger.LogDebug("Processed {Count} notifications in batch, written to database.", validBatch.Count);
     }
 }

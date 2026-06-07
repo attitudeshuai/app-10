@@ -29,6 +29,7 @@ public interface IDeviceService
     Task<DeviceDto?> UpdateAsync(int id, UpdateDeviceDto dto);
     Task<bool> DeleteAsync(int id);
     Task<DeviceStatisticsDto> GetStatisticsAsync();
+    Task<DeviceDto?> UpdateStatusAsync(int id, DeviceStatus newStatus);
 }
 
 public interface IMaintenancePlanService
